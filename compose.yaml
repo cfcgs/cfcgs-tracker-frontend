@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  frontend:
+    container_name: cfcgs_frontend
+    image: cfcgs-frontend:standalone
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
