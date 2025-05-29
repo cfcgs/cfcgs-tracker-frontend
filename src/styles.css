@@ -1,0 +1,387 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f5f5f5;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+header {
+  background-color: #2c3e50;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+}
+
+.dashboard-container {
+  display: flex;
+  flex: 1;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.filters-container {
+  display: flex;
+  flex-direction: column;
+  width: 15%;
+  height: 700px;
+  background-color: white;
+  padding: 1rem;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  gap: 1 rem;
+}
+
+.filter-container {
+  min-height: 0;
+  flex-grow: 1;
+  align-items: flex-start;
+  justify-items: flex-start;
+}
+
+.filter-group {
+  flex-grow: 1;
+  min-height: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-group h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.filter-item {
+  margin: 0.5rem 0;
+  display: flex;
+  align-items: center;
+}
+
+.filter-item label {
+  margin-left: 0.5rem;
+}
+
+.chart-area {
+  flex: 1;
+  background-color: white;
+  padding: 1rem;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+tabs-navigation-container {
+  display: flex;
+  justify-content: center;
+  /* Centraliza os botões de aba */
+  border-bottom: 2px solid #e0e6ed;
+  /* Linha de base subtil para o contentor das abas */
+  margin-bottom: 2rem;
+  /* Espaço abaixo das abas, antes do conteúdo da página */
+  padding: 0 1rem;
+  /* Padding lateral para que as abas não colem nas bordas em ecrãs menores */
+  overflow-x: auto;
+  /* Permite scroll horizontal se houver muitas abas em ecrãs pequenos */
+  white-space: nowrap;
+  /* Impede que os botões quebrem linha */
+}
+
+.tab-button {
+  font-family: Arial, sans-serif;
+  /* Ou a fonte principal do seu projeto */
+  font-size: 0.95rem;
+  /* Tamanho de fonte base para as abas */
+  font-weight: 500;
+  /* Peso da fonte (semi-negrito) */
+  color: #556b82;
+  /* Cor de texto para abas inativas (um cinza-azulado) */
+  background-color: transparent;
+  border: none;
+  /* Remove bordas padrão do botão */
+  border-bottom: 3px solid transparent;
+  /* Espaço para a borda da aba ativa, inicialmente transparente */
+  padding: 0.85rem 1.25rem;
+  /* Padding interno (vertical, horizontal) */
+  margin: 0 0.25rem;
+  /* Pequena margem entre os botões */
+  margin-bottom: -2px;
+  /* Alinha a borda inferior do botão com a borda do contentor */
+  cursor: pointer;
+  outline: none;
+  /* Remove o outline padrão do foco (se desejar, adicione um estilo de foco personalizado) */
+  transition: color 0.25s ease-in-out, border-color 0.25s ease-in-out;
+  /* Transições suaves */
+  white-space: nowrap;
+  /* Garante que o texto do botão não quebre */
+}
+
+.tab-button:hover {
+  color: #007bff;
+  /* Cor de destaque ao pairar (azul vibrante) */
+  /* Opcional: pode adicionar uma borda subtil no hover se a aba não estiver ativa */
+  /* border-bottom-color: #cce5ff; */
+}
+
+.tab-button.active {
+  color: #007bff;
+  /* Cor do texto da aba ativa */
+  border-bottom-color: #007bff;
+  /* Cor da borda inferior da aba ativa */
+  font-weight: 600;
+  /* Torna o texto da aba ativa mais destacado */
+}
+
+/* Estilos de Foco Personalizados (Opcional, mas bom para acessibilidade) */
+.tab-button:focus-visible {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+  border-radius: 4px;
+  /* Para o outline acompanhar a forma do botão se ele tiver bordas arredondadas */
+}
+
+
+/* Ajustes para ecrãs maiores (opcional, pode ajustar o padding e fonte) */
+@media (min-width: 768px) {
+  .tabs-navigation-container {
+    padding: 0;
+    /* Remove padding lateral se o centro já for suficiente */
+  }
+
+  .tab-button {
+    font-size: 1rem;
+    /* Tamanho de fonte ligeiramente maior */
+    padding: 1rem 1.75rem;
+    /* Mais padding para uma área de clique maior */
+    margin: 0 0.5rem;
+    /* Mais espaço entre os botões */
+  }
+}
+
+/* Adicione ao seu style.css */
+
+/* Wrapper para o DataGrid do grid-lite */
+.grid-lite-table-wrapper {
+  width: 80%;
+  margin: 2rem auto; /* Adiciona margem em cima/em baixo e centraliza horizontalmente */
+  /* O DataGrid geralmente preenche o seu contentor.
+     Se precisar de scroll vertical dentro deste wrapper, defina uma max-height.
+     Exemplo: max-height: 70vh; overflow-y: auto; */
+}
+
+/* Estilos básicos para a tabela gerada pelo grid-lite.
+   O grid-lite pode adicionar as suas próprias classes (ex: .hc-grid-table).
+   Se sim, você pode querer estilizar essas classes diretamente.
+   Estes são estilos genéricos para a tabela, caso ela não tenha muito estilo por padrão. */
+
+.grid-lite-table-wrapper table {
+  width: 100% !important; /* Garante que a tabela preencha o wrapper */
+  border-collapse: collapse;
+  font-family: 'Roboto', Arial, sans-serif; /* Fonte consistente */
+  font-size: 0.9rem;
+  color: #333333;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* Sombra subtil */
+  border-radius: 4px; /* Bordas arredondadas para o contentor da tabela */
+  overflow: hidden; /* Para que o border-radius funcione com o fundo do cabeçalho */
+}
+
+.grid-lite-table-wrapper th,
+.grid-lite-table-wrapper td {
+  padding: 10px 12px; /* Ajuste o padding conforme necessário */
+  text-align: left;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.grid-lite-table-wrapper th {
+  background-color: #f2f2f2;
+  font-weight: 700;
+  color: #666666;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-right: 1px solid #e6e6e6;
+}
+.grid-lite-table-wrapper th:last-child {
+  border-right: none;
+}
+
+/* Para cabeçalhos clicáveis (se a ordenação estiver ativa) */
+.grid-lite-table-wrapper th[data-sortable="true"] {
+  cursor: pointer;
+}
+.grid-lite-table-wrapper th[data-sortable="true"]:hover {
+  background-color: #e8e8e8;
+}
+
+
+.grid-lite-table-wrapper tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.grid-lite-table-wrapper tbody tr:hover {
+  background-color: #f1f1f1;
+}
+
+/* Alinhamento para colunas numéricas (se você adicionar uma classe) */
+.grid-lite-table-wrapper .text-right {
+  text-align: right;
+}
+/* Se o grid-lite não permitir adicionar classes às células,
+   você pode precisar de seletores mais específicos, como:
+   .grid-lite-table-wrapper td:nth-child(4), (para a 4ª coluna, por exemplo)
+   .grid-lite-table-wrapper td:nth-child(5) { text-align: right; }
+*/
+
+/* Se o conteúdo da tabela for muito largo e precisar de scroll horizontal
+   dentro do .grid-lite-table-wrapper, você pode adicionar: */
+.grid-lite-table-wrapper {
+  /* ... (estilos existentes) ... */
+  overflow-x: auto; /* Adiciona scroll horizontal se a tabela for mais larga que 80% */
+}
+
+
+.grid-lite-table-wrapper th {
+  /* background-color: #e9ecef; */ /* Cor anterior mais clara */
+  background-color: #d1d5db; /* Cinza mais escuro (Tailwind gray-400) */
+  /* Ou uma cor ainda mais escura, se preferir: */
+  /* background-color: #adb5bd; */ /* Tailwind gray-500 */
+  font-weight: 700;
+  color: #374151; /* Texto mais escuro para contraste (Tailwind gray-700) */
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-right: 1px solid #c0c8d1; /* Borda um pouco mais escura */
+  border-bottom: 2px solid #9ca3af; /* Borda inferior mais forte */
+  padding: 12px 12px; /* Ajuste do padding */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.grid-lite-table-wrapper th:last-child {
+  border-right: none;
+}
+
+/* Para cabeçalhos clicáveis (se a ordenação estiver ativa) */
+.grid-lite-table-wrapper th[data-sortable="true"] {
+  cursor: pointer;
+}
+.grid-lite-table-wrapper th[data-sortable="true"]:hover {
+  background-color: #c0c8d1; /* Hover um pouco mais escuro que o fundo */
+}
+
+/* Indicador de Ordenação Personalizado */
+.custom-sort-indicator {
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.custom-sort-indicator.none {
+  background-color: #e5e7eb; /* Cinza claro (Tailwind gray-200) */
+  color: #4b5563; /* Cinza escuro (Tailwind gray-600) */
+}
+
+.custom-sort-indicator.ascending {
+  background-color: #d1fae5; /* Verde claro (Tailwind green-100) */
+  color: #065f46; /* Verde escuro (Tailwind green-800) */
+}
+
+.custom-sort-indicator.descending {
+  background-color: #fee2e2; /* Vermelho claro (Tailwind red-100) */
+  color: #991b1b; /* Vermelho escuro (Tailwind red-800) */
+}
+
+.hcg-head-row-content th:hover{
+  cursor: pointer;
+}
+
+span.hcg-header-cell-content span.hcg-visually-hidden{
+  display: none;
+}
+
+.hcg-visually-hidden {
+  display: flex;
+  justify-content: center;
+  background-color: #d1d5db;
+  color: #374151;
+  border-bottom: 2px solid #9ca3af;
+  font-weight: bold;
+}
+
+.table-page-container{
+  display: flex;
+  flex-direction: column;
+}
+
+.table-page-container .table-title,
+.table-page-container .table-export {
+  display: flex;
+  justify-content: center;
+  padding: 0 0 30px 0 ;
+}
+
+.export-button {
+  background-color: #007bff; 
+  color: white;
+  font-family: Arial, sans-serif; 
+  font-size: 0.9rem;      
+  font-weight: 600;      
+  text-transform: uppercase; 
+  letter-spacing: 0.5px;   
+  padding: 10px 20px;      
+  border: none;
+  border-radius: 6px;      
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15),
+              0 1px 2px rgba(0, 0, 0, 0.1); 
+  transition: background-color 0.2s ease-out, 
+              box-shadow 0.2s ease-out, 
+              transform 0.1s ease-out;
+  display: inline-flex; 
+  align-items: center;
+  justify-content: center;
+  text-decoration: none; 
+}
+
+.export-button:hover,
+.export-button:focus {
+  background-color: #0056b3; /* Azul mais escuro no hover/focus */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), /* Sombra mais pronunciada */
+              0 2px 4px rgba(0, 0, 0, 0.15);
+  outline: none; /* Remove o outline padrão, o box-shadow já dá feedback de foco */
+}
+
+.export-button:active {
+  background-color: #004085; /* Azul ainda mais escuro quando pressionado */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Sombra reduzida ao pressionar */
+  transform: translateY(1px); /* Efeito de "pressionar o botão" */
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    flex-direction: column;
+  }
+
+  .filters-container {
+    width: auto;
+  }
+}
