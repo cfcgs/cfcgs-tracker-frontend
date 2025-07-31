@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-dark-bg text-dark-text transition-colors duration-300;
+}
+
+/* ... (imports do tailwind no topo) ... */
+
+/* Estilos para o Highcharts Grid-Lite (Tabela de Fundos) */
+.grid-lite-table-wrapper {
+    height: 100%;
+    width: 100%;
+}
+.highcharts-grid-container {
+    background-color: transparent !important;
+    font-family: inherit !important;
+}
+.highcharts-grid-container .highcharts-grid-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+.highcharts-grid-container .highcharts-grid-table th {
+    background-color: rgba(55, 65, 81, 0.4) !important;
+    color: #C9D1D9 !important;
+    border-bottom: 1px solid #30363D !important;
+    padding: 0.75rem 1rem !important;
+    text-align: left;
+    font-weight: 600;
+}
+.highcharts-grid-container .highcharts-grid-table td {
+    color: #8B949E !important;
+    border-bottom: 1px solid #30363D !important;
+    padding: 0.75rem 1rem !important;
+}
+.highcharts-grid-container .highcharts-grid-table tr:hover td {
+    background-color: rgba(30, 30, 30, 0.2) !important;
+}
+
+/* Scrollbar customizada para os cards */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #161B22;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #30363D;
+    border-radius: 10px;
+    border: 3px solid #161B22;
+}
+
+.table-scroll-wrapper {
+    overflow-x: auto;
+}

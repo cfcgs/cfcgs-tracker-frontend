@@ -27,14 +27,14 @@ const BubbleChart = ({ fundsData }) => {
       height: 700
     },
     title: {
-      text: 'Climate Funds Overview'
+      text: 'Visão Geral dos Fundos Climáticos' // Traduzido
     },
     subtitle: {
-      text: 'Bubble size represents pledge amount (USD mn)'
+      text: 'O tamanho da bolha representa o valor da promessa (Pledge) em Milhões de USD' // Traduzido
     },
     xAxis: {
       title: {
-        text: 'Projects Approved'
+        text: 'Projetos Aprovados' // Traduzido
       },
       labels: {
         format: '{value}'
@@ -42,7 +42,7 @@ const BubbleChart = ({ fundsData }) => {
     },
     yAxis: {
       title: {
-        text: 'Disbursement (USD mn)'
+        text: 'Desembolso (Milhões de USD)' // Traduzido
       },
       labels: {
         format: '{value}'
@@ -51,12 +51,13 @@ const BubbleChart = ({ fundsData }) => {
     tooltip: {
       useHTML: true,
       headerFormat: '<table>',
+      // Tooltip traduzido
       pointFormat: '<tr><th colspan="2"><h3>{point.name}</h3></th></tr>' +
-        '<tr><th>Pledge:</th><td>${point.z:.3f} mn</td></tr>' +
-        '<tr><th>Disbursement:</th><td>${point.y:.3f} mn</td></tr>' +
-        '<tr><th>Projects Approved:</th><td>{point.x}</td></tr>' +
-        '<tr><th>Fund Type:</th><td>{point.fund_type}</td></tr>' +
-        '<tr><th>Fund Focus:</th><td>{point.fund_focus}</td></tr>',
+        '<tr><th>Promessa (Pledge):</th><td>${point.z:,.2f} mi</td></tr>' +
+        '<tr><th>Desembolso:</th><td>${point.y:,.2f} mi</td></tr>' +
+        '<tr><th>Projetos Aprovados:</th><td>{point.x}</td></tr>' +
+        '<tr><th>Tipo de Fundo:</th><td>{point.fund_type}</td></tr>' +
+        '<tr><th>Foco do Fundo:</th><td>{point.fund_focus}</td></tr>',
       footerFormat: '</table>',
       followPointer: true
     },
@@ -72,8 +73,8 @@ const BubbleChart = ({ fundsData }) => {
       }
     },
     series: [{
-      name: 'Funds',
-      colorByPoint: true,
+      name: 'Fundos', // Traduzido
+      colorByPoint: true, // Usará a nova paleta de cores do tema automaticamente
       data: processData()
     }],
     exporting: {

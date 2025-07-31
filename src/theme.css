@@ -1,0 +1,26 @@
+/* src/theme.css */
+:root {
+  --background-color: #ffffff;
+  --text-color: #1f2937;
+  --text-color-secondary: #6b7280;
+  --kpi-background: #f9fafb;
+  --border-color: #e5e7eb;
+  --chart-background: #ffffff;
+  --chart-gridline-color: #e6e6e6;
+}
+
+html.dark {
+  --background-color: #121212;
+  --text-color: #e0e0e0;
+  --text-color-secondary: #a0a0a0;
+  --kpi-background: #1e1e1e;
+  --border-color: #333333;
+  --chart-background: #1e1e1e;
+  --chart-gridline-color: #333333;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
