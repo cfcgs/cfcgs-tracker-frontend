@@ -6,13 +6,13 @@ import "highcharts/highcharts-more";
 import "highcharts/modules/exporting";
 import "highcharts/modules/offline-exporting";
 
-
 const BarChart = ({ statusData }) => {
     if (!statusData) {
-        return <div className="text-center p-10 text-gray-500">Sem dados para exibir no gráfico de status.</div>;
+        return <div className="text-center p-10 text-dark-text-secondary">Selecione filtros para ver os dados.</div>;
     }
 
     const { total_pledge, total_deposit, total_approval } = statusData;
+    const colors = Highcharts.getOptions().colors;
 
     const options = {
         chart: {
@@ -20,10 +20,11 @@ const BarChart = ({ statusData }) => {
             height: 700,
         },
         title: {
-            text: 'Financial status of funds'
+            text: 'Status Financeiro dos Fundos' // Traduzido
         },
         xAxis: {
-            categories: ['Pledge', 'Deposit', 'Approval'],
+            // Categorias traduzidas
+            categories: ['Promessas (Pledge)', 'Depósitos (Deposit)', 'Aprovações (Approval)'],
             title: {
                 text: null
             }
@@ -31,18 +32,20 @@ const BarChart = ({ statusData }) => {
         yAxis: {
             min: 0,
             title: {
-                text: 'Value (USD)', // Ajuste a unidade conforme necessário
+                text: 'Valor (USD)', // Traduzido
                 align: 'high'
             },
             labels: {
                 overflow: 'justify',
-                formatter: function () { // Formata para milhões com 'M'
-                    return (this.value / 1000).toFixed(1) + 'K';
+                formatter: function () {
+                    if (this.value >= 1000000) return (this.value / 1000000).toFixed(1) + ' bi';
+                    if (this.value >= 1000) return (this.value / 1000).toFixed(1) + ' mi';
+                    return this.value;
                 }
             }
         },
         tooltip: {
-            valueSuffix: ' USD', // Ajuste a unidade conforme necessário
+            // Tooltip melhorado e traduzido
             formatter: function () {
                 return `<b>${this.category}</b><br/>${this.series.name}: ${Highcharts.numberFormat(this.y, 2, '.', ',')} USD`;
             }
@@ -52,24 +55,24 @@ const BarChart = ({ statusData }) => {
                 dataLabels: {
                     enabled: true,
                     formatter: function () {
-                        return Highcharts.numberFormat(this.y / 1000, 1) + 'K'; // Mostra em milhões
+                        if (this.y >= 1000000) return Highcharts.numberFormat(this.y / 1000000, 1) + ' bi';
+                        if (this.y >= 1000) return Highcharts.numberFormat(this.y / 1000, 1) + ' mi';
+                        return Highcharts.numberFormat(this.y, 0);
                     }
                 },
-                borderRadius: 3,
+                borderRadius: 5,
             }
         },
         legend: {
             enabled: false,
         },
-        credits: {
-            enabled: false
-        },
         series: [{
-            name: 'Valor',
+            name: 'Valor', // Traduzido
             data: [
-                { y: total_pledge, color: '#7cb5ec' },   // Azul para Pledge
-                { y: total_deposit, color: '#434348' },  // Cinza Escuro para Deposit
-                { y: total_approval, color: '#90ed7d' } // Verde para Approval
+                // Novas cores mais elegantes
+                { y: total_pledge, color: colors[0] },   // Azul
+                { y: total_deposit, color: colors[3] },  // Roxo/Azul
+                { y: total_approval, color: colors[1] } // Verde
             ],
         }],
         exporting: {
