@@ -65,3 +65,13 @@ export const getTotalsByObjective = async (filters = {}) => {
   const response = await axios.post(url, payload);
   return response.data.totals || [];
 };
+
+export const getCommitmentTimeSeries = async (filters = {}) => {
+    const url = `${API_BASE_URL}/commitments/time_series`;
+    const payload = {
+        years: filters.selectedYears || [],
+        countries: filters.selectedCountryIds || [] 
+    };
+    const response = await axios.post(url, payload);
+    return response.data.series || [];
+};

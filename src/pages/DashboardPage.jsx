@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Highcharts from 'highcharts';
 import { 
-    getCommitmentsData, 
     getFundsData, 
     getFundTypes, 
     getFundFocuses, 
     getFundStatusData, 
     getRecipientCountries,
-    getTotalsByObjective
+    getTotalsByObjective,
+    getCommitmentTimeSeries,
+    getCommitmentsData // Apenas para obter a lista de anos
 } from '../services/api';
 import { darkTheme } from '../highcharts-theme';
 
-// Importe todos os seus componentes
+// Componentes do Dashboard
 import LineChart from '../components/dashboard/CommitmentsLineChart';
 import Filters from '../components/dashboard/CommitmentsFilters';
 import BarChart from '../components/dashboard/BarChart';
@@ -31,7 +32,6 @@ const ChartCard = ({ title, children }) => (
 
 const DashboardPage = () => {
     // Estados para dados brutos da API (usados para popular opções de filtros)
-    const [commitments, setCommitments] = useState([]);
     const [allFunds, setAllFunds] = useState([]);
     const [fundTypes, setFundTypes] = useState([]);
     const [fundFocuses, setFundFocuses] = useState([]);
@@ -40,7 +40,7 @@ const DashboardPage = () => {
     // Estados para opções de filtro
     const [availableYears, setAvailableYears] = useState([]);
 
-    // Estados para filtros selecionados
+    // Estados para filtros selecionados (iniciam vazios)
     const [selectedYears, setSelectedYears] = useState([]);
     const [selectedRecipientCountries, setSelectedRecipientCountries] = useState([]);
     const [bubbleSelectedTypes, setBubbleSelectedTypes] = useState([]);
@@ -52,7 +52,8 @@ const DashboardPage = () => {
     const [objectiveSelectedCountries, setObjectiveSelectedCountries] = useState([]);
     const [objectiveSelectedObjectives, setObjectiveSelectedObjectives] = useState(['Adaptação', 'Mitigação']);
 
-    // Estados para dados processados
+    // Estados para dados processados de cada gráfico
+    const [lineChartSeries, setLineChartSeries] = useState([]);
     const [bubbleChartData, setBubbleChartData] = useState([]);
     const [barChartData, setBarChartData] = useState(null);
     const [objectiveTotals, setObjectiveTotals] = useState([]);
@@ -60,71 +61,75 @@ const DashboardPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Efeito para buscar todos os dados iniciais
+    // Efeito para buscar todos os dados iniciais necessários para os filtros
     useEffect(() => {
         Highcharts.setOptions(darkTheme);
-        const fetchAllData = async () => {
+        const fetchInitialData = async () => {
             try {
                 setLoading(true);
-                const [commitmentsData, fundsData, typesData, focusesData, recipientCountriesData] = await Promise.all([
-                    getCommitmentsData(), getFundsData(), getFundTypes(), getFundFocuses(), getRecipientCountries()
+                const [fundsData, typesData, focusesData, recipientCountriesData, commitmentsForYears] = await Promise.all([
+                    getFundsData(), 
+                    getFundTypes(), 
+                    getFundFocuses(), 
+                    getRecipientCountries(),
+                    getCommitmentsData({ limit: 20000 }) // Busca uma amostra grande para extrair todos os anos possíveis
                 ]);
 
-                const safeCommitments = commitmentsData || [];
-                setCommitments(safeCommitments);
                 setAllFunds(fundsData || []);
                 setFundTypes(typesData || []);
                 setFundFocuses(focusesData || []);
                 setAllRecipientCountries(recipientCountriesData || []);
-                setBubbleChartData(fundsData || []);
+                setBubbleChartData(fundsData || []); // Carga inicial para o gráfico de bolhas
 
-                const years = [...new Set(safeCommitments.map(c => c.year))].sort((a, b) => b - a);
+                const years = [...new Set((commitmentsForYears || []).map(c => c.year))].sort((a, b) => b - a);
                 setAvailableYears(years);
 
             } catch (err) {
-                setError('Falha ao carregar os dados do dashboard.');
+                console.error("Falha ao carregar dados do dashboard:", err);
+                setError('Falha ao carregar os dados do dashboard. Verifique a conexão e tente recarregar a página.');
             } finally {
                 setLoading(false);
             }
         };
-        fetchAllData();
+        fetchInitialData();
     }, []);
 
-    // Memoiza dados para o Gráfico de Linhas (Evolução por País Receptor)
-    const lineChartSeries = useMemo(() => {
-        if (!commitments.length) return [];
-        const yearsToFilter = selectedYears.length > 0 ? selectedYears : availableYears;
-        const filteredByYear = commitments.filter(c => yearsToFilter.includes(c.year));
-        const totalByYear = filteredByYear.reduce((acc, curr) => {
-            acc[curr.year] = (acc[curr.year] || 0) + curr.amount_usd_thousand;
-            return acc;
-        }, {});
-        const totalSeries = {
-            name: 'Financiamento Total Agregado',
-            data: yearsToFilter.map(year => [year, Math.round(totalByYear[year] || 0)]).sort((a,b) => a[0] - b[0]),
-            zIndex: 1, marker: { lineWidth: 2, lineColor: Highcharts.getOptions().colors[0], fillColor: 'white' }
-        };
-        const countrySeries = selectedRecipientCountries.map(countryName => {
-            const dataByYear = filteredByYear.filter(c => c.recipient_country === countryName).reduce((acc, curr) => {
-                acc[curr.year] = (acc[curr.year] || 0) + curr.amount_usd_thousand;
-                return acc;
-            }, {});
-            return {
-                name: countryName,
-                data: yearsToFilter.map(year => [year, Math.round(dataByYear[year] || 0)]).sort((a,b) => a[0] - b[0])
+    // useEffect dedicado para o Gráfico de Linhas (Evolução)
+    useEffect(() => {
+        if (loading) return;
+        
+        const fetchLineChartData = async () => {
+            // Converte nomes de países selecionados em IDs para a API
+            const countryIds = allRecipientCountries
+                .filter(c => selectedRecipientCountries.includes(c.name))
+                .map(c => c.id);
+
+            const filters = {
+                selectedYears: selectedYears,
+                selectedCountryIds: countryIds
             };
-        });
-        return [totalSeries, ...countrySeries];
-    }, [commitments, selectedYears, selectedRecipientCountries, availableYears]);
+            
+            try {
+                const apiSeriesData = await getCommitmentTimeSeries(filters);
+                const formattedSeries = apiSeriesData.map(series => ({
+                    name: series.name,
+                    data: series.data.map(point => [point.year, point.amount]).sort((a,b) => a[0] - b[0])
+                }));
+                setLineChartSeries(formattedSeries);
+            } catch (error) {
+                console.error("Falha ao buscar dados para o gráfico de linhas:", error);
+                setLineChartSeries([]);
+            }
+        };
+
+        fetchLineChartData();
+    }, [loading, selectedYears, selectedRecipientCountries, allRecipientCountries]);
     
     // useEffect para buscar dados do BubbleChart
     useEffect(() => {
         if (loading) return;
         const fetchBubbleData = async () => {
-            const filters = {
-                selectedTypes: bubbleSelectedTypes,
-                selectedFocuses: bubbleSelectedFocuses
-            };
+            const filters = { selectedTypes: bubbleSelectedTypes, selectedFocuses: bubbleSelectedFocuses };
             try {
                 const data = await getFundsData(filters);
                 setBubbleChartData(data);
@@ -137,11 +142,7 @@ const DashboardPage = () => {
     useEffect(() => {
         if (loading) return;
         const fetchBarData = async () => {
-            const filters = {
-                selectedFunds: barSelectedFunds,
-                selectedTypes: barSelectedTypes,
-                selectedFocuses: barSelectedFocuses
-            };
+            const filters = { selectedFunds: barSelectedFunds, selectedTypes: barSelectedTypes, selectedFocuses: barSelectedFocuses };
             try {
                 const data = await getFundStatusData(filters);
                 setBarChartData(data);
@@ -156,7 +157,7 @@ const DashboardPage = () => {
         const fetchObjectiveData = async () => {
             const filters = {
                 selectedYears: objectiveSelectedYears,
-                selectedCountryIds: objectiveSelectedCountries // O backend espera IDs
+                selectedCountryIds: objectiveSelectedCountries
             };
             try {
                 const data = await getTotalsByObjective(filters);
