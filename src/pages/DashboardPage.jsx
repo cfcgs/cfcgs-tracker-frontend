@@ -8,11 +8,11 @@ import {
     getRecipientCountries,
     getTotalsByObjective,
     getCommitmentTimeSeries,
-    getCommitmentsData // Apenas para obter a lista de anos
+    getAvailableYears // <-- Nova API para os anos
 } from '../services/api';
 import { darkTheme } from '../highcharts-theme';
 
-// Componentes do Dashboard
+// Importe todos os seus componentes
 import LineChart from '../components/dashboard/CommitmentsLineChart';
 import Filters from '../components/dashboard/CommitmentsFilters';
 import BarChart from '../components/dashboard/BarChart';
@@ -31,16 +31,14 @@ const ChartCard = ({ title, children }) => (
 );
 
 const DashboardPage = () => {
-    // Estados para dados brutos da API (usados para popular opções de filtros)
+    // Estados para dados de opções dos filtros
     const [allFunds, setAllFunds] = useState([]);
     const [fundTypes, setFundTypes] = useState([]);
     const [fundFocuses, setFundFocuses] = useState([]);
     const [allRecipientCountries, setAllRecipientCountries] = useState([]);
-    
-    // Estados para opções de filtro
     const [availableYears, setAvailableYears] = useState([]);
-
-    // Estados para filtros selecionados (iniciam vazios)
+    
+    // Estados para filtros selecionados
     const [selectedYears, setSelectedYears] = useState([]);
     const [selectedRecipientCountries, setSelectedRecipientCountries] = useState([]);
     const [bubbleSelectedTypes, setBubbleSelectedTypes] = useState([]);
@@ -61,28 +59,29 @@ const DashboardPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Efeito para buscar todos os dados iniciais necessários para os filtros
+    // Efeito para buscar todos os dados iniciais PARA OS FILTROS
     useEffect(() => {
         Highcharts.setOptions(darkTheme);
         const fetchInitialData = async () => {
             try {
                 setLoading(true);
-                const [fundsData, typesData, focusesData, recipientCountriesData, commitmentsForYears] = await Promise.all([
+                // Carga inicial muito mais leve
+                const [fundsData, typesData, focusesData, recipientCountriesData, yearsData] = await Promise.all([
                     getFundsData(), 
                     getFundTypes(), 
                     getFundFocuses(), 
                     getRecipientCountries(),
-                    getCommitmentsData({ limit: 20000 }) // Busca uma amostra grande para extrair todos os anos possíveis
+                    getAvailableYears() // <-- Usa o novo endpoint leve
                 ]);
 
                 setAllFunds(fundsData || []);
                 setFundTypes(typesData || []);
                 setFundFocuses(focusesData || []);
                 setAllRecipientCountries(recipientCountriesData || []);
-                setBubbleChartData(fundsData || []); // Carga inicial para o gráfico de bolhas
-
-                const years = [...new Set((commitmentsForYears || []).map(c => c.year))].sort((a, b) => b - a);
-                setAvailableYears(years);
+                setAvailableYears(yearsData || []);
+                
+                // Carga inicial para o gráfico de bolhas, que não depende de filtros
+                setBubbleChartData(fundsData || []); 
 
             } catch (err) {
                 console.error("Falha ao carregar dados do dashboard:", err);
@@ -99,7 +98,6 @@ const DashboardPage = () => {
         if (loading) return;
         
         const fetchLineChartData = async () => {
-            // Converte nomes de países selecionados em IDs para a API
             const countryIds = allRecipientCountries
                 .filter(c => selectedRecipientCountries.includes(c.name))
                 .map(c => c.id);
