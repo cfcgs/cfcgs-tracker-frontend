@@ -6,15 +6,16 @@ const CommitmentCard = ({ year }) => {
     const [previewCommitments, setPreviewCommitments] = useState([]);
     const [hasMore, setHasMore] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [exporting, setExporting] = useState(false);
 
     // Efeito para buscar os dados de preview (apenas 5 itens)
     useEffect(() => {
         const fetchPreviewData = async () => {
             setLoading(true);
             try {
-                // Pede 6 itens. Se vierem 6, sabemos que há mais para mostrar.
+                // Pede 6 itens. Se a API retornar 6, sabemos que há mais para mostrar.
                 const data = await getCommitmentsData({ selectedYears: [year], limit: 6 });
-                setPreviewCommitments(data.slice(0, 5)); // Mostra apenas 5
+                setPreviewCommitments(data.slice(0, 5)); // Mostra apenas os 5 primeiros
                 if (data.length > 5) {
                     setHasMore(true); // Se há mais de 5, ativa as reticências
                 }
@@ -25,13 +26,14 @@ const CommitmentCard = ({ year }) => {
             }
         };
         fetchPreviewData();
-    }, [year]);
+    }, [year]); // Roda sempre que o ano mudar
 
     // Função de exportação que busca TODOS os dados do ano antes de baixar
     const exportToCsv = async () => {
+        setExporting(true); // Ativa o estado de loading no botão
         try {
-            // Busca os dados completos, sem limite, apenas sob demanda
-            const allDataForYear = await getCommitmentsData({ selectedYears: [year] });
+            // Busca os dados completos, com um limite bem grande, apenas sob demanda
+            const allDataForYear = await getCommitmentsData({ selectedYears: [year], limit: 35000 });
             
             if (!allDataForYear || allDataForYear.length === 0) {
                 alert(`Não há dados para exportar para o ano ${year}.`);
@@ -65,6 +67,8 @@ const CommitmentCard = ({ year }) => {
         } catch (error) {
             console.error(`Falha ao exportar CSV para o ano ${year}:`, error);
             alert(`Ocorreu um erro ao gerar o arquivo CSV para ${year}.`);
+        } finally {
+            setExporting(false); // Desativa o estado de loading no botão
         }
     };
 
@@ -72,8 +76,12 @@ const CommitmentCard = ({ year }) => {
         <div className="bg-dark-card border border-dark-border rounded-xl p-4 flex flex-col">
             <div className="flex justify-between items-center mb-4">
                 <h4 className="text-xl font-semibold text-dark-text">Compromissos de {year}</h4>
-                <button onClick={exportToCsv} className="bg-accent-blue text-white px-3 py-1 rounded-md flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    <FiDownload /> Baixar CSV Completo
+                <button 
+                    onClick={exportToCsv} 
+                    disabled={exporting}
+                    className="bg-accent-blue text-white px-3 py-1 rounded-md flex items-center gap-2 hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-wait"
+                >
+                    <FiDownload /> {exporting ? 'Exportando...' : 'Baixar CSV Completo'}
                 </button>
             </div>
             <div className="overflow-auto max-h-80 custom-scrollbar">

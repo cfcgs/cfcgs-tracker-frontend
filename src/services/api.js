@@ -41,7 +41,7 @@ export const getFundStatusData = async (filters = {}) => {
 };
 
 export const getCommitmentsData = async (filters = {}) => {
-    const url = `${API_BASE_URL}/commitments/?limit=100000000`;
+    const url = `${API_BASE_URL}/commitments/?limit=${filters.limit}`;
     const payload = {
         years: filters.selectedYears || [],
         countries: filters.selectedCountries || []
