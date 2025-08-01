@@ -75,3 +75,8 @@ export const getCommitmentTimeSeries = async (filters = {}) => {
     const response = await axios.post(url, payload);
     return response.data.series || [];
 };
+
+export const getAvailableYears = async () => {
+  const response = await axios.get(`${API_BASE_URL}/commitments/years`);
+  return response.data || [];
+};
