@@ -41,7 +41,7 @@ export const getFundStatusData = async (filters = {}) => {
 };
 
 export const getCommitmentsData = async (filters = {}) => {
-    const url = `${API_BASE_URL}/commitments/?limit=${filters.limit}`;
+    const url = `${API_BASE_URL}/commitments/?limit=${filters.limit || 10000}&offset=${filters.offset || 0}`;
     const payload = {
         years: filters.selectedYears || [],
         countries: filters.selectedCountries || []

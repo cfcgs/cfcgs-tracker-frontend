@@ -6,7 +6,7 @@ const CommitmentCard = ({ year }) => {
     const [previewCommitments, setPreviewCommitments] = useState([]);
     const [hasMore, setHasMore] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [exporting, setExporting] = useState(false);
+    const [exporting, setExporting] = useState(false); // Adicionado para feedback no botão
 
     // Efeito para buscar os dados de preview (apenas 5 itens)
     useEffect(() => {
@@ -26,50 +26,14 @@ const CommitmentCard = ({ year }) => {
             }
         };
         fetchPreviewData();
-    }, [year]); // Roda sempre que o ano mudar
+    }, [year]);
 
-    // Função de exportação que busca TODOS os dados do ano antes de baixar
-    const exportToCsv = async () => {
-        setExporting(true); // Ativa o estado de loading no botão
-        try {
-            // Busca os dados completos, com um limite bem grande, apenas sob demanda
-            const allDataForYear = await getCommitmentsData({ selectedYears: [year], limit: 35000 });
-            
-            if (!allDataForYear || allDataForYear.length === 0) {
-                alert(`Não há dados para exportar para o ano ${year}.`);
-                return;
-            }
-
-            const headers = ['ID', 'Year', 'Project', 'Provider', 'Channel', 'Recipient', 'Amount (USD K)'];
-            const escapeCsvCell = (cell) => {
-                const str = String(cell ?? '');
-                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                    return `"${str.replace(/"/g, '""')}"`;
-                }
-                return str;
-            };
-
-            const rows = allDataForYear.map(c => 
-                [c.id, c.year, c.project, c.provider_country, c.channel_of_delivery, c.recipient_country, c.amount_usd_thousand]
-                .map(escapeCsvCell)
-                .join(',')
-            );
-            
-            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
-            
-            const link = document.createElement("a");
-            link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", `commitments_${year}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-        } catch (error) {
-            console.error(`Falha ao exportar CSV para o ano ${year}:`, error);
-            alert(`Ocorreu um erro ao gerar o arquivo CSV para ${year}.`);
-        } finally {
-            setExporting(false); // Desativa o estado de loading no botão
-        }
+    // Função de exportação que chama o endpoint do backend
+    const exportToCsv = () => {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+        // Simplesmente abre a URL do novo endpoint de exportação.
+        // O navegador cuidará do download automaticamente.
+        window.location.href = `${API_BASE_URL}/commitments/export/${year}`;
     };
 
     return (
@@ -77,13 +41,13 @@ const CommitmentCard = ({ year }) => {
             <div className="flex justify-between items-center mb-4">
                 <h4 className="text-xl font-semibold text-dark-text">Compromissos de {year}</h4>
                 <button 
-                    onClick={exportToCsv} 
-                    disabled={exporting}
-                    className="bg-accent-blue text-white px-3 py-1 rounded-md flex items-center gap-2 hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-wait"
+                    onClick={exportToCsv}
+                    className="bg-accent-blue text-white px-3 py-1 rounded-md flex items-center gap-2 hover:opacity-80 transition-opacity"
                 >
-                    <FiDownload /> {exporting ? 'Exportando...' : 'Baixar CSV Completo'}
+                    <FiDownload /> Baixar CSV Completo
                 </button>
             </div>
+            {/* --- CÓDIGO DE RENDERIZAÇÃO RESTAURADO --- */}
             <div className="overflow-auto max-h-80 custom-scrollbar">
                  {loading ? <div className="text-center p-4">Carregando prévia...</div> : (
                     <table className="w-full text-sm text-left text-dark-text-secondary">
