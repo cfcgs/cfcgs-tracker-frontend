@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiGrid, FiBarChart2, FiCircle, FiTable, FiUpload } from 'react-icons/fi';
+import { FiGrid, FiBarChart2, FiCircle, FiTable, FiUpload, FiMessageSquare } from 'react-icons/fi';
 
 const SideNav = ({ activeView, onNavChange }) => {
     const navItems = [
@@ -7,7 +7,8 @@ const SideNav = ({ activeView, onNavChange }) => {
         { id: 'datagrid', label: 'Tabelas Completas', icon: <FiTable /> },
         // { id: 'reports', label: 'Relatórios', icon: <FiBarChart2 /> },
         // { id: 'funds', label: 'Fundos', icon: <FiCircle /> },
-        { id: 'upload', label: 'Upload de Dados', icon: <FiUpload /> },
+        // { id: 'chatbot', label: 'Assistente IA', icon: <FiMessageSquare /> },
+        // { id: 'upload', label: 'Upload de Dados', icon: <FiUpload /> },
     ];
 
     return (
