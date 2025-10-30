@@ -5,6 +5,7 @@ import './index.css';
 import SideNav from './components/SideNav';
 import DashboardPage from './pages/DashboardPage';
 import DataGridPage from './pages/DataGridPage'; // Importa a nova página de tabelas
+import ChatbotPage from './pages/ChatbotPage';
 
 // Simula outras páginas para o menu
 const ReportsPage = () => <div className="p-6 text-white text-3xl">Página de Relatórios (em construção)</div>;
@@ -26,6 +27,8 @@ function App() {
                  return <FundsPage />;
             case 'upload':
                 return <UploadPage />;
+            case 'chatbot': 
+                return <ChatbotPage />;
             default:
                 return <DashboardPage />;
         }
