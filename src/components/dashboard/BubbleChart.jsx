@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 
@@ -7,6 +7,28 @@ import "highcharts/modules/exporting";
 import "highcharts/modules/offline-exporting";
 
 const BubbleChart = ({ fundsData }) => {
+  const containerRef = useRef(null);
+  const [chartHeight, setChartHeight] = useState(0);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return undefined;
+
+    const updateHeight = () => {
+      const nextHeight = node.clientHeight || 0;
+      if (nextHeight && nextHeight !== chartHeight) {
+        setChartHeight(nextHeight);
+      }
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(() => updateHeight());
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [chartHeight]);
+
   // Process data for the bubble chart
   const processData = () => {
     return fundsData.map(fund => ({
@@ -24,7 +46,7 @@ const BubbleChart = ({ fundsData }) => {
       type: 'bubble',
       plotBorderWidth: 1,
       zoomType: 'xy',
-      height: 700
+      height: chartHeight || null
     },
     title: {
       text: 'Visão Geral dos Fundos Climáticos' // Traduzido
@@ -87,10 +109,11 @@ const BubbleChart = ({ fundsData }) => {
   };
 
   return (
-    <div className="chart-container">
+    <div ref={containerRef} className="h-full w-full">
       <HighchartsReact
         highcharts={Highcharts}
         options={options}
+        containerProps={{ style: { height: "100%", width: "100%" } }}
       />
     </div>
   );

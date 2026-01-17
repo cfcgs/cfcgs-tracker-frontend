@@ -1,4 +1,4 @@
-// src/components/dashboard/SankeyFilters.jsx
+// src/components/dashboard/HeatmapFilters.jsx
 import React from 'react';
 import Select from 'react-select';
 import { AsyncPaginate } from 'react-select-async-paginate';
@@ -62,17 +62,17 @@ const selectStyles = {
     dropdownIndicator: (provided) => ({ ...provided, color: '#8B949E', ':hover': { color: '#C9D1D9' } }), // Style dropdown arrow
 };
 
-const SankeyFilters = ({
+const HeatmapFilters = ({
     allYears,
     allCountries,
-    selectedYears, // <-- NOVO (plural)
+    selectedYears,
     selectedCountryIds,
-    selectedProjectIds, // <-- NOVO
+    selectedProjectIds,
     selectedObjective,
     selectedView,
     onYearChange,
     onCountryChange,
-    onProjectChange, // <-- NOVO
+    onProjectChange,
     onObjectiveChange,
     onViewChange,
 }) => {
@@ -89,8 +89,8 @@ const SankeyFilters = ({
     ];
 
     const viewOptions = [
-        { value: 'project_country_year', label: 'Visão: Projeto -> País -> Ano' },
-        { value: 'project_year_country', label: 'Visão: Projeto -> Ano -> País' },
+        { value: 'country_year', label: 'Linhas: Países | Colunas: Anos' },
+        { value: 'year_country', label: 'Linhas: Anos | Colunas: Países' },
     ];
 
     // --- Helper to get selected option object for react-select ---
@@ -109,21 +109,21 @@ const SankeyFilters = ({
     return (
         <div className="flex flex-wrap gap-4 p-4 bg-dark-card rounded-lg shadow mb-4 items-center transition-all duration-200 ease-in-out">
             
-            {/* [CORREÇÃO] Year Filter (Multi Select) */}
+            {/* Year Filter (Multi Select) */}
             <div className="flex-grow min-w-[150px]">
                 <label className="block text-sm font-medium text-dark-text-secondary mb-1">Anos</label>
                 <Select
-                    isMulti // <-- Permite múltiplos anos
+                    isMulti
                     options={yearOptions}
-                    value={getSelectedOptions(yearOptions, selectedYears)} // <-- Usa helper de multi
-                    onChange={(selectedOptions) => onYearChange(selectedOptions.map(opt => opt.value))} // <-- Retorna array de valores
+                    value={getSelectedOptions(yearOptions, selectedYears)}
+                    onChange={(selectedOptions) => onYearChange(selectedOptions.map(opt => opt.value))}
                     styles={selectStyles}
                     placeholder="Todos os Anos"
                     closeMenuOnSelect={false}
                 />
             </div>
 
-            {/* Country Filter (Multi Select) - Já estava correto */}
+            {/* Country Filter (Multi Select) */}
             <div className="flex-grow min-w-[200px]">
                 <label className="block text-sm font-medium text-dark-text-secondary mb-1">Países</label>
                 <Select
@@ -137,19 +137,19 @@ const SankeyFilters = ({
                 />
             </div>
 
-            {/* [NOVO] Project Filter (Multi Select) */}
+            {/* Project Filter (Multi Select) */}
             <div className="w-[280px] min-w-[200px] min-h-[60px] max-h-[60px]">
                 <label className="block text-sm font-medium text-dark-text-secondary mb-1">Projetos</label>
                  <AsyncPaginate
                     isMulti
-                    value={selectedProjectObjects} // <-- Usa os objetos reconstruídos
+                    value={selectedProjectObjects}
                     loadOptions={loadPaginatedProjects}
-                    onChange={handleProjectChange} // <-- Usa o novo handler
+                    onChange={handleProjectChange}
                     styles={selectStyles}
                     placeholder="Buscar e selecionar projetos..."
                     closeMenuOnSelect={false}
-                    debounceTimeout={300} // Espera 300ms após digitar
-                    additional={{ page: 0 }} // Inicia na página 0
+                    debounceTimeout={300}
+                    additional={{ page: 0 }}
                     loadingMessage={() => 'Carregando mais projetos...'}
                  />
             </div>
@@ -172,7 +172,7 @@ const SankeyFilters = ({
                 <Select
                     options={viewOptions}
                     value={getSelectedOption(viewOptions, selectedView)}
-                    onChange={(selectedOption) => onViewChange(selectedOption ? selectedOption.value : 'project_country_year')}
+                    onChange={(selectedOption) => onViewChange(selectedOption ? selectedOption.value : 'country_year')}
                     styles={selectStyles}
                     placeholder="Selecionar Visão"
                 />
@@ -181,4 +181,4 @@ const SankeyFilters = ({
     );
 };
 
-export default SankeyFilters;
+export default HeatmapFilters;

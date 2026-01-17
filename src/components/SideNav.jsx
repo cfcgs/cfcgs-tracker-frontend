@@ -7,7 +7,7 @@ const SideNav = ({ activeView, onNavChange }) => {
         { id: 'datagrid', label: 'Tabelas Completas', icon: <FiTable /> },
         // { id: 'reports', label: 'Relatórios', icon: <FiBarChart2 /> },
         // { id: 'funds', label: 'Fundos', icon: <FiCircle /> },
-        // { id: 'chatbot', label: 'Assistente IA', icon: <FiMessageSquare /> },
+        { id: 'chatbot', label: 'Assistente IA', icon: <FiMessageSquare /> },
         // { id: 'upload', label: 'Upload de Dados', icon: <FiUpload /> },
     ];
 

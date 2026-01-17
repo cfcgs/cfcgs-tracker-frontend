@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 
@@ -11,13 +11,43 @@ const BarChart = ({ statusData }) => {
         return <div className="text-center p-10 text-dark-text-secondary">Selecione filtros para ver os dados.</div>;
     }
 
+    const containerRef = useRef(null);
+    const [chartHeight, setChartHeight] = useState(0);
+
+    useEffect(() => {
+        const node = containerRef.current;
+        if (!node) return undefined;
+
+        const updateHeight = () => {
+            const nextHeight = node.clientHeight || 0;
+            if (nextHeight && nextHeight !== chartHeight) {
+                setChartHeight(nextHeight);
+            }
+        };
+
+        updateHeight();
+
+        const observer = new ResizeObserver(() => updateHeight());
+        observer.observe(node);
+
+        return () => observer.disconnect();
+    }, [chartHeight]);
+
     const { total_pledge, total_deposit, total_approval } = statusData;
     const colors = Highcharts.getOptions().colors;
+    const maxValue = Math.max(total_pledge || 0, total_deposit || 0, total_approval || 0);
+    const unitLabel = maxValue >= 1000 ? 'Valor (USD bi)' : 'Valor (USD mn)';
+    const formatMillions = (value) => {
+        if (value >= 1000) {
+            return `${Highcharts.numberFormat(value / 1000, 1, ',', '.')} bi`;
+        }
+        return `${Highcharts.numberFormat(value, 1, ',', '.')} mn`;
+    };
 
     const options = {
         chart: {
             type: 'bar',
-            height: 700,
+            height: chartHeight || null,
         },
         title: {
             text: 'Status Financeiro dos Fundos' // Traduzido
@@ -32,22 +62,20 @@ const BarChart = ({ statusData }) => {
         yAxis: {
             min: 0,
             title: {
-                text: 'Valor (USD)', // Traduzido
+                text: unitLabel, // Traduzido
                 align: 'high'
             },
             labels: {
                 overflow: 'justify',
                 formatter: function () {
-                    if (this.value >= 1000000) return (this.value / 1000000).toFixed(1) + ' bi';
-                    if (this.value >= 1000) return (this.value / 1000).toFixed(1) + ' mi';
-                    return this.value;
+                    return formatMillions(this.value);
                 }
             }
         },
         tooltip: {
             // Tooltip melhorado e traduzido
             formatter: function () {
-                return `<b>${this.category}</b><br/>${this.series.name}: ${Highcharts.numberFormat(this.y, 2, '.', ',')} USD`;
+                return `<b>${this.category}</b><br/>${this.series.name}: USD ${formatMillions(this.y)}`;
             }
         },
         plotOptions: {
@@ -55,9 +83,7 @@ const BarChart = ({ statusData }) => {
                 dataLabels: {
                     enabled: true,
                     formatter: function () {
-                        if (this.y >= 1000000) return Highcharts.numberFormat(this.y / 1000000, 1) + ' bi';
-                        if (this.y >= 1000) return Highcharts.numberFormat(this.y / 1000, 1) + ' mi';
-                        return Highcharts.numberFormat(this.y, 0);
+                        return formatMillions(this.y);
                     }
                 },
                 borderRadius: 5,
@@ -85,7 +111,7 @@ const BarChart = ({ statusData }) => {
     };
 
     return (
-        <div className="chart-container">
+        <div ref={containerRef} className="h-full w-full">
             <HighchartsReact
                 highcharts={Highcharts}
                 options={options}
