@@ -1,5 +1,5 @@
 // src/pages/DashboardPage.jsx
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Highcharts from 'highcharts';
 
 // --- APLICAÇÃO DO TEMA ---
@@ -25,13 +25,12 @@ import {
     getRecipientCountries, getTotalsByObjective,
     getCommitmentTimeSeries, getAvailableYears,
     // --- Novas funções ---
-    getSankeyDiagramData,
     getKpisData,
 } from '../services/api';
 
 // Importe TODOS os componentes
-import SankeyFilters from '../components/dashboard/SankeyFilters';
-import SankeyChart from '../components/dashboard/SankeyChart';
+import HeatmapFilters from '../components/dashboard/HeatmapFilters';
+import HeatmapChart from '../components/dashboard/HeatmapChart';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import LineChart from '../components/dashboard/CommitmentsLineChart';
 import Filters from '../components/dashboard/CommitmentsFilters';
@@ -46,17 +45,49 @@ import ObjectiveFilters from '../components/dashboard/ObjectiveFilters';
 import { FiBox, FiGlobe, FiDollarSign, FiArrowDownCircle, FiCheckSquare } from 'react-icons/fi';
 
 // --- [CORREÇÃO] ChartCard atualizado para suportar layout flexível ---
-const ChartCard = ({ title, children, className = "" }) => (
+const ChartCard = ({
+    title,
+    children,
+    className = "",
+    sources = [],
+    sourceClassName = "mt-2",
+}) => (
     // Adicionado overflow-hidden para garantir que o conteúdo não vaze
-    <div className={`bg-dark-card border border-dark-border rounded-xl p-4 flex flex-col h-full overflow-hidden ${className}`}>
+    <div className={`relative bg-dark-card border border-dark-border rounded-xl p-4 pb-4 flex flex-col h-full min-h-0 overflow-hidden ${className}`}>
         {title && <h3 className="text-xl font-semibold text-dark-text mb-4">{title}</h3>}
         {/* flex-grow e min-h-0 permitem que o conteúdo interno use o espaço */}
-        <div className="flex-grow flex flex-col min-h-0">{children}</div>
+        <div className="relative z-0 flex-grow flex flex-col min-h-0">{children}</div>
+        {sources.length > 0 && (
+            <div className={`relative z-10 text-[11px] text-dark-text-secondary flex-shrink-0 ${sourceClassName}`}>
+                Fonte:{' '}
+                {sources.map((source, index) => (
+                    <React.Fragment key={`${source.url}-${index}`}>
+                        {index > 0 && ' · '}
+                        <a
+                            href={source.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-accent-blue hover:underline"
+                        >
+                            {source.label}
+                        </a>
+                    </React.Fragment>
+                ))}
+            </div>
+        )}
     </div>
 );
 
-// Constante de paginação do Sankey
-const ITEMS_PER_PAGE_SANKEY = 5;
+const DATA_SOURCES = {
+    cfu: {
+        label: 'Climate Funds Update (CFU)',
+        url: 'https://climatefundsupdate.org/data-dashboard/',
+    },
+    oecd: {
+        label: 'OECD (Organisation for Economic Co-operation and Development)',
+        url: 'https://www.oecd.org/en.html',
+    },
+};
 
 const DashboardPage = () => {
     // --- Estados para dados de opções dos filtros (do _old) ---
@@ -65,7 +96,6 @@ const DashboardPage = () => {
     const [fundFocuses, setFundFocuses] = useState([]);
     const [allRecipientCountries, setAllRecipientCountries] = useState([]);
     const [availableYears, setAvailableYears] = useState([]);
-    const [allProjects, setAllProjects] = useState([]); // <-- NOVO para filtro Sankey
     const [loadingFilters, setLoadingFilters] = useState(true); // Renomeado de 'loading'
     const [globalError, setGlobalError] = useState(null); // Renomeado de 'error'
 
@@ -76,17 +106,12 @@ const DashboardPage = () => {
     const [totalFinancialKpis, setTotalFinancialKpis] = useState({ total_pledge: 0, total_deposit: 0, total_approval: 0 });
     const [totalKpisLoading, setTotalKpisLoading] = useState(true); // Loading para os KPIs financeiros
 
-    // --- Estados para Sankey (NOVO) ---
-    const [sankeySelectedYears, setSankeySelectedYears] = useState([]); // <-- Corrigido para array (multi-select)
-    const [sankeySelectedCountryIds, setSankeySelectedCountryIds] = useState([]);
-    const [sankeySelectedProjectIds, setSankeySelectedProjectIds] = useState([]); // <-- NOVO
-    const [sankeySelectedObjective, setSankeySelectedObjective] = useState('all');
-    const [sankeySelectedView, setSankeySelectedView] = useState('project_country_year');
-    const [sankeyData, setSankeyData] = useState([]);
-    const [sankeyTotalProjects, setSankeyTotalProjects] = useState(0);
-    const [sankeyCurrentPage, setSankeyCurrentPage] = useState(0);
-    const [sankeyLoading, setSankeyLoading] = useState(false);
-    const [sankeyError, setSankeyError] = useState(null);
+    // --- Estados para Heatmap ---
+    const [heatmapSelectedYears, setHeatmapSelectedYears] = useState([]);
+    const [heatmapSelectedCountryIds, setHeatmapSelectedCountryIds] = useState([]);
+    const [heatmapSelectedProjectIds, setHeatmapSelectedProjectIds] = useState([]);
+    const [heatmapSelectedObjective, setHeatmapSelectedObjective] = useState('all');
+    const [heatmapSelectedView, setHeatmapSelectedView] = useState('country_year');
 
     // --- Estados para Gráficos Antigos (do _old) ---
     const [commitmentsSelectedYears, setCommitmentsSelectedYears] = useState([]); // Renomeado de selectedYears
@@ -157,40 +182,6 @@ const DashboardPage = () => {
         loadInitialData();
     }, []);
 
-    // --- Fetch Sankey data (Callback) ---
-    const fetchSankeyData = useCallback(async (page) => {
-        setSankeyLoading(true); setSankeyError(null);
-        try {
-            const filters = {
-                // 'year' não é mais enviado, 'years' é
-                years: sankeySelectedYears, // <-- Corrigido para 'years' (array)
-                country_ids: sankeySelectedCountryIds,
-                project_ids: sankeySelectedProjectIds, // <-- NOVO
-                objective: sankeySelectedObjective,
-                view: sankeySelectedView,
-                limit: ITEMS_PER_PAGE_SANKEY,
-                offset: page * ITEMS_PER_PAGE_SANKEY,
-            };
-            const result = await getSankeyDiagramData(filters);
-            if (result.error) { throw new Error(result.error); }
-            setSankeyData(result.data || []);
-            setSankeyTotalProjects(result.total_projects || 0);
-        } catch (error) {
-            console.error("Falha fetchSankeyData:", error);
-            setSankeyError(`Falha Sankey: ${error.message}`);
-            setSankeyData([]); setSankeyTotalProjects(0);
-        } finally {
-            setSankeyLoading(false);
-        }
-    }, [sankeySelectedYears, sankeySelectedCountryIds, sankeySelectedProjectIds, sankeySelectedObjective, sankeySelectedView]);
-
-    // --- Efeito para buscar dados do Sankey ---
-    useEffect(() => {
-        // Só busca dados se os filtros não estiverem carregando
-        if (!loadingFilters) {
-            fetchSankeyData(sankeyCurrentPage);
-        }
-    }, [fetchSankeyData, sankeyCurrentPage, loadingFilters]);
 
     // --- Fetch para Gráficos Antigos (Lógica Original do _old + 'loadingFilters') ---
 
@@ -310,17 +301,9 @@ const DashboardPage = () => {
     }, [objectiveTotals, objectiveSelectedObjectives]);
 
 
-    // --- Handlers para mudança de filtros (Sankey - NOVOS) ---
-    // Handler genérico que reseta a página para 0 ao mudar qualquer filtro
-    const handleSankeyFilterChange = (setter, value) => {
+    // --- Handlers para mudança de filtros (Heatmap) ---
+    const handleHeatmapFilterChange = (setter, value) => {
         setter(value);
-        setSankeyCurrentPage(0);
-    };
-    const handleSankeyPageChange = (newPage) => {
-        const totalPages = Math.ceil(sankeyTotalProjects / ITEMS_PER_PAGE_SANKEY);
-        if (newPage >= 0 && newPage < totalPages) {
-            setSankeyCurrentPage(newPage);
-        }
     };
     
     // --- Handlers para filtros dos gráficos antigos (Originais do _old) ---
@@ -419,47 +402,52 @@ const DashboardPage = () => {
                  </div>
             )}
 
-            {/* --- Nova Linha Superior: KPIs + Sankey --- */}
+            {/* --- Nova Linha Superior: KPIs + Heatmap --- */}
             {/* [CORREÇÃO LAYOUT] Adicionado 'items-start' para alinhar a coluna do KPI ao topo */}
-            {/* Altura mínima ajustada para acomodar o Sankey */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[700px] md:min-h-[700px] items-start">
+            {/* Altura mínima ajustada para acomodar o Heatmap */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[700px] items-stretch mb-12">
                 
                 {/* [CORREÇÃO LAYOUT] Coluna Esquerda: KPIs (Agora alinhada ao topo e com novo design) */}
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 self-start">
                     {renderKpis()}
                 </div>
 
-                {/* Coluna Direita: Filtros e Gráfico Sankey */}
-                <div className="lg:col-span-3 h-full"> {/* Adicionado h-full aqui */}
-                    <ChartCard title="Fluxo de Financiamento por Projeto (Top 5 por Página)" className="h-full">
-                        {/* Filtros Sankey */}
-                        <SankeyFilters
+                {/* Coluna Direita: Filtros e Heatmap */}
+                <div className="lg:col-span-3 h-full self-stretch min-h-0 overflow-hidden">
+                    <ChartCard
+                        title="Doações por País e Ano"
+                        className="h-full pb-6 overflow-visible"
+                        sourceClassName="mt-4"
+                        sources={[DATA_SOURCES.oecd]}
+                    >
+                        {/* Filtros Heatmap */}
+                        <HeatmapFilters
                             allYears={availableYears}
                             allCountries={allRecipientCountries} // Passa objetos {id, name}
                             
-                            selectedYears={sankeySelectedYears} // <-- Corrigido (array)
-                            selectedCountryIds={sankeySelectedCountryIds}
-                            selectedProjectIds={sankeySelectedProjectIds} // <-- NOVO
-                            selectedObjective={sankeySelectedObjective}
-                            selectedView={sankeySelectedView}
+                            selectedYears={heatmapSelectedYears}
+                            selectedCountryIds={heatmapSelectedCountryIds}
+                            selectedProjectIds={heatmapSelectedProjectIds}
+                            selectedObjective={heatmapSelectedObjective}
+                            selectedView={heatmapSelectedView}
                             
-                            onYearChange={(value) => handleSankeyFilterChange(setSankeySelectedYears, value)} // <-- Corrigido
-                            onCountryChange={(value) => handleSankeyFilterChange(setSankeySelectedCountryIds, value)}
-                            onProjectChange={(value) => handleSankeyFilterChange(setSankeySelectedProjectIds, value)} // <-- NOVO
-                            onObjectiveChange={(value) => handleSankeyFilterChange(setSankeySelectedObjective, value)}
-                            onViewChange={(value) => handleSankeyFilterChange(setSankeySelectedView, value)}
+                            onYearChange={(value) => handleHeatmapFilterChange(setHeatmapSelectedYears, value)}
+                            onCountryChange={(value) => handleHeatmapFilterChange(setHeatmapSelectedCountryIds, value)}
+                            onProjectChange={(value) => handleHeatmapFilterChange(setHeatmapSelectedProjectIds, value)}
+                            onObjectiveChange={(value) => handleHeatmapFilterChange(setHeatmapSelectedObjective, value)}
+                            onViewChange={(value) => handleHeatmapFilterChange(setHeatmapSelectedView, value)}
                         />
-                        {/* Container do SankeyChart usa flex-grow e min-h-0 */}
-                        <div className="mt-4 flex-grow min-h-0">
-                            <SankeyChart
-                                chartData={sankeyData}
-                                totalItems={sankeyTotalProjects}
-                                currentPage={sankeyCurrentPage}
-                                itemsPerPage={ITEMS_PER_PAGE_SANKEY}
-                                onPageChange={handleSankeyPageChange}
-                                isLoading={sankeyLoading}
-                                error={sankeyError}
-                                view={sankeySelectedView}
+                        {/* Container do HeatmapChart usa flex-grow e min-h-0 */}
+                        <div className="mt-4 flex-grow min-h-0 overflow-hidden">
+                            <HeatmapChart
+                                filters={{
+                                    years: heatmapSelectedYears,
+                                    country_ids: heatmapSelectedCountryIds,
+                                    project_ids: heatmapSelectedProjectIds,
+                                    objective: heatmapSelectedObjective,
+                                    view: heatmapSelectedView,
+                                }}
+                                loadingFilters={loadingFilters}
                             />
                         </div>
                     </ChartCard>
@@ -469,8 +457,12 @@ const DashboardPage = () => {
             {/* --- Seção Inferior: Gráficos Antigos (Layout Original + Correção de Altura) --- */}
             
             {/* [CORREÇÃO LAYOUT] Altura da LINHA definida aqui (mantendo seus 850px) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[850px]"> {/* Reduzido para 700px */}
-                <ChartCard title="Análise de Fundos por Tamanho">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[800px]"> {/* Ajuste de altura para reduzir espaço vazio */}
+                <ChartCard
+                    title="Análise de Fundos por Tamanho"
+                    sources={[DATA_SOURCES.cfu]}
+                    sourceClassName="mt-1"
+                >
                      <BubbleChartFilters
                         allFunds={allFunds} // Passa allFunds
                         fundTypes={fundTypes}
@@ -481,12 +473,16 @@ const DashboardPage = () => {
                         onFocusChange={(options) => setBubbleSelectedFocuses(extractValues(options))}
                      />
                      {/* [CORREÇÃO LAYOUT] Removida altura fixa h-[600px] */}
-                     <div className="mt-4 flex-grow min-h-0">
+                     <div className="mt-4 flex-1 min-h-0">
                         {bubbleLoading ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <BubbleChart fundsData={bubbleChartData} />}
                      </div>
                 </ChartCard>
 
-                 <ChartCard title="Status Financeiro Agregado">
+                 <ChartCard
+                     title="Status Financeiro Agregado"
+                     sources={[DATA_SOURCES.cfu]}
+                     sourceClassName="mt-1"
+                 >
                      <BarChartFilters
                         allFunds={allFunds}
                         allFundTypes={fundTypes}
@@ -499,7 +495,7 @@ const DashboardPage = () => {
                         onFocusChange={(options) => setBarSelectedFocuses(extractValues(options))}
                     />
                       {/* [CORREÇÃO LAYOUT] Removida altura fixa h-[600px] e pb-4 */}
-                      <div className="mt-4 flex-grow min-h-0">
+                      <div className="mt-4 flex-1 min-h-0">
                         {/* Usa barChartData e barLoading (não totalKpisLoading) */}
                         {barLoading ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <BarChart statusData={barChartData} />}
                       </div>
@@ -507,8 +503,13 @@ const DashboardPage = () => {
             </div>
 
             {/* [CORREÇÃO LAYOUT] Altura da LINHA definida aqui */}
-            <div className="grid grid-cols-1 gap-6 h-[500px]">
-                <ChartCard title="Financiamento por Objetivo Climático">
+            <div className="grid grid-cols-1 gap-6 h-[560px]">
+                <ChartCard
+                    title="Financiamento por Objetivo Climático"
+                    className="pb-8"
+                    sourceClassName="mt-4"
+                    sources={[DATA_SOURCES.oecd]}
+                >
                      <ObjectiveFilters
                         years={availableYears}
                         countries={allRecipientCountries} // Passa OBJETOS {id, name}
@@ -528,8 +529,13 @@ const DashboardPage = () => {
             </div>
 
             {/* [CORREÇÃO LAYOUT] Altura da LINHA definida aqui */}
-             <div className="grid grid-cols-1 gap-6 h-[500px]">
-                 <ChartCard title="Evolução do Financiamento por País Receptor">
+             <div className="grid grid-cols-1 gap-6 h-[560px]">
+                 <ChartCard
+                     title="Evolução do Financiamento por País Receptor"
+                     className="pb-8"
+                     sourceClassName="mt-4"
+                     sources={[DATA_SOURCES.oecd]}
+                 >
                     <Filters // Nome original
                         years={availableYears}
                         countries={allRecipientCountries.map(c => c.name)} // Passa NOMES

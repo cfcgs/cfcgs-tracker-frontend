@@ -83,10 +83,23 @@ export const getAvailableYears = async () => {
 };
 
 
-export const askChatbot = async (question) => {
+export const askChatbot = async ({
+  question,
+  sessionId = 'default',
+  page = 1,
+  pageSize = 10,
+  confirmPagination = false,
+}) => {
   const url = `${API_BASE_URL}/chatbot/query`;
-  const response = await axios.post(url, { question });
-  return response.data.answer;
+  const payload = {
+    question,
+    session_id: sessionId,
+    page,
+    page_size: pageSize,
+    confirm_pagination: confirmPagination,
+  };
+  const response = await axios.post(url, payload);
+  return response.data;
 };
 
 
@@ -101,30 +114,63 @@ export const getCommitmentProjects = async () => {
     }
 };
 
-// --- [CORRIGIDO] Função do Sankey ---
-export const getSankeyDiagramData = async (filters = {}) => {
+// --- Função do Heatmap ---
+export const getHeatmapData = async (filters = {}) => {
   try {
     const params = {
-        limit: filters.limit || 5,
-        offset: filters.offset || 0,
-        view: filters.view || 'project_country_year',
+        view: filters.view || 'country_year',
         objective: filters.objective || 'all',
-        // [CORREÇÃO] Passa os arrays para o serializador
-        year: filters.years || [], // Backend espera 'year' como alias
-        country_id: filters.country_ids || [], // Backend espera 'country_id'
-        project_id: filters.project_ids || [],   // Backend espera 'project_id'
+        year: filters.years || [],
+        country_id: filters.country_ids || [],
+        project_id: filters.project_ids || [],
+        row_offset: filters.row_offset ?? 0,
+        row_limit: filters.row_limit ?? 30,
+        column_offset: filters.column_offset ?? 0,
+        column_limit: filters.column_limit ?? 30,
     };
 
-    // [CORREÇÃO] Usa o paramsSerializer para formatar os arrays corretamente
-    const response = await axios.get(`${API_BASE_URL}/commitments/sankey_data`, { 
+    const response = await axios.get(`${API_BASE_URL}/commitments/heatmap_data`, {
         params,
-        paramsSerializer: params => paramsSerializer(params) // <-- CHAVE DA CORREÇÃO
+        paramsSerializer: params => paramsSerializer(params)
     });
 
-    return response.data || { total_projects: 0, data: [] };
+    return response.data || {
+        view: params.view,
+        rows: [],
+        columns: [],
+        row_totals: [],
+        column_totals: [],
+        cells: [],
+        grand_total: 0,
+        grand_total_projects: 0,
+    };
   } catch (error) {
-    console.error("Error fetching Sankey data:", error);
-    return { total_projects: 0, data: [], error: error.message };
+    console.error("Error fetching heatmap data:", error);
+    return { rows: [], columns: [], row_totals: [], column_totals: [], cells: [], error: error.message };
+  }
+};
+
+export const getHeatmapCellProjects = async ({
+  year,
+  countryId,
+  objective = 'all',
+  limit = 30,
+  offset = 0,
+} = {}) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/commitments/heatmap_projects`, {
+      params: {
+        year,
+        country_id: countryId,
+        objective,
+        limit,
+        offset,
+      },
+    });
+    return response.data || { total: 0, has_more: false, projects: [] };
+  } catch (error) {
+    console.error('Error fetching heatmap projects:', error);
+    return { total: 0, has_more: false, projects: [] };
   }
 };
 
