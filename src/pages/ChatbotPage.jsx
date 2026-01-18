@@ -106,6 +106,8 @@ const ChatbotPage = () => {
     const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
     const [pendingPaginationQuestion, setPendingPaginationQuestion] = useState(null);
     const [activePagination, setActivePagination] = useState(null);
+    const [pendingDisambiguation, setPendingDisambiguation] = useState(null);
+    const [isAwaitingDisambiguation, setIsAwaitingDisambiguation] = useState(false);
     const messagesEndRef = useRef(null);
     const sessionIdRef = useRef(null);
 
@@ -163,6 +165,18 @@ const ChatbotPage = () => {
         );
     };
 
+    const formatDisambiguationOption = (option) => {
+        if (!option) return '';
+        if (option.kind && option.kind.startsWith('scope_')) {
+            return option.name;
+        }
+        if (option.kind === 'country' || option.kind === 'region') {
+            return option.name;
+        }
+        const kindLabel = option.kind || '';
+        return kindLabel ? `${option.name} (${kindLabel})` : option.name;
+    };
+
     const handleBotResponse = (response, baseQuestion) => {
         const safeAnswer = response?.answer || 'Desculpe, não consegui processar sua pergunta.';
         const botMessage = {
@@ -172,6 +186,17 @@ const ChatbotPage = () => {
             sources: response?.sources || null,
         };
         setMessages(prev => [...prev, botMessage]);
+
+        if (response?.disambiguation) {
+            setPendingDisambiguation({
+                ...response.disambiguation,
+                question: baseQuestion,
+            });
+            setIsAwaitingDisambiguation(true);
+        } else {
+            setPendingDisambiguation(null);
+            setIsAwaitingDisambiguation(false);
+        }
 
         if (response?.pagination && baseQuestion) {
             setActivePagination({
@@ -202,7 +227,7 @@ const ChatbotPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const currentInput = input.trim();
-        if (!currentInput || loading) return;
+        if (!currentInput || loading || isAwaitingDisambiguation) return;
 
         const userMessage = { sender: 'user', text: currentInput };
         setMessages(prev => [...prev, userMessage]);
@@ -211,6 +236,8 @@ const ChatbotPage = () => {
         setActivePagination(null);
         setIsAwaitingConfirmation(false);
         setPendingPaginationQuestion(null);
+        setPendingDisambiguation(null);
+        setIsAwaitingDisambiguation(false);
         setLoading(true);
 
         try {
@@ -276,6 +303,54 @@ const ChatbotPage = () => {
         // [CORREÇÃO AQUI] Limpa o estado pendente após a confirmação para que a próxima 
         // pergunta do usuário não seja tratada como confirmação de paginação.
         setPendingPaginationQuestion(null);
+    };
+
+    const handleDisambiguationChoice = async (option) => {
+        if (!pendingDisambiguation || loading) return;
+        const label = pendingDisambiguation.mode === 'confirm'
+            ? `Confirmar: ${formatDisambiguationOption(option)}`
+            : `Selecionado: ${formatDisambiguationOption(option)}`;
+        const baseQuestion = pendingDisambiguation.question || '';
+        if (!baseQuestion) {
+            setLoading(false);
+            setError('Pergunta original não encontrada para a desambiguação.');
+            return;
+        }
+
+        setMessages(prev => [...prev, { sender: 'user', text: label }]);
+        setLoading(true);
+        setError(null);
+        setIsAwaitingDisambiguation(false);
+        setPendingDisambiguation(null);
+
+        try {
+            const response = await askChatbot({
+                question: baseQuestion,
+                sessionId,
+                page: 1,
+                pageSize: DEFAULT_PAGE_SIZE,
+                confirmPagination: false,
+                disambiguationChoice: option,
+            });
+            handleBotResponse(response, baseQuestion);
+        } catch (err) {
+            console.error('Erro ao confirmar desambiguação:', err);
+            const errorMessage = { sender: 'bot', text: 'Desculpe, tive um problema ao confirmar a seleção.' };
+            setMessages(prev => [...prev, errorMessage]);
+            setError('Falha na comunicação com o assistente.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDisambiguationCancel = () => {
+        setMessages(prev => [
+            ...prev,
+            { sender: 'user', text: 'Cancelar seleção' },
+            { sender: 'bot', text: 'Tudo bem. Você pode reformular a pergunta com o nome exato quando quiser.' },
+        ]);
+        setIsAwaitingDisambiguation(false);
+        setPendingDisambiguation(null);
     };
 
     const handleRejection = () => {
@@ -435,19 +510,51 @@ const ChatbotPage = () => {
                 </div>
             )}
 
+            {isAwaitingDisambiguation && pendingDisambiguation && !loading && (
+                <div className="bg-dark-card border border-dark-border rounded-lg p-3 mb-4 text-sm text-white">
+                    <p className="text-dark-text-secondary">{pendingDisambiguation.message}</p>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                        {pendingDisambiguation.mode === 'confirm' && pendingDisambiguation.options.length === 1 ? (
+                            <button
+                                onClick={() => handleDisambiguationChoice(pendingDisambiguation.options[0])}
+                                className="px-3 py-2 bg-accent-blue hover:bg-blue-700 text-white rounded-lg transition-colors text-xs"
+                            >
+                                Confirmar {formatDisambiguationOption(pendingDisambiguation.options[0])}
+                            </button>
+                        ) : (
+                            pendingDisambiguation.options.map((option) => (
+                                <button
+                                    key={`${option.kind}-${option.name}`}
+                                    onClick={() => handleDisambiguationChoice(option)}
+                                    className="px-3 py-2 bg-accent-blue hover:bg-blue-700 text-white rounded-lg transition-colors text-xs"
+                                >
+                                    {formatDisambiguationOption(option)}
+                                </button>
+                            ))
+                        )}
+                        <button
+                            onClick={handleDisambiguationCancel}
+                            className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-xs"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Área de Input */}
             <form onSubmit={handleSubmit} className="flex items-center gap-3 border-t border-dark-border pt-4">
                 <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder={isAwaitingConfirmation ? 'Responda usando os botões acima para continuar...' : 'Pergunte sobre os dados de financiamento...'}
+                    placeholder={isAwaitingConfirmation || isAwaitingDisambiguation ? 'Responda usando os botões acima para continuar...' : 'Pergunte sobre os dados de financiamento...'}
                     className="flex-grow px-4 py-2 bg-dark-card border border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-blue text-white placeholder-gray-500 disabled:opacity-50"
-                    disabled={loading || isAwaitingConfirmation}
+                    disabled={loading || isAwaitingConfirmation || isAwaitingDisambiguation}
                 />
                 <button
                     type="submit"
-                    disabled={loading || isAwaitingConfirmation || !input.trim()}
+                    disabled={loading || isAwaitingConfirmation || isAwaitingDisambiguation || !input.trim()}
                     className="p-3 bg-accent-blue text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
                     aria-label="Enviar mensagem"
                 >

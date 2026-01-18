@@ -89,6 +89,7 @@ export const askChatbot = async ({
   page = 1,
   pageSize = 10,
   confirmPagination = false,
+  disambiguationChoice = null,
 }) => {
   const url = `${API_BASE_URL}/chatbot/query`;
   const payload = {
@@ -98,6 +99,9 @@ export const askChatbot = async ({
     page_size: pageSize,
     confirm_pagination: confirmPagination,
   };
+  if (disambiguationChoice) {
+    payload.disambiguation_choice = disambiguationChoice;
+  }
   const response = await axios.post(url, payload);
   return response.data;
 };
