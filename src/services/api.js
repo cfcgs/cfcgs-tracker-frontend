@@ -178,6 +178,42 @@ export const getHeatmapCellProjects = async ({
   }
 };
 
+export const getHeatmapKpis = async (filters = {}) => {
+  try {
+    const params = {
+      objective: filters.objective || 'all',
+      year: filters.years || [],
+      country_id: filters.country_ids || [],
+      project_id: filters.project_ids || [],
+    };
+
+    const response = await axios.get(`${API_BASE_URL}/commitments/heatmap_kpis`, {
+      params,
+      paramsSerializer: params => paramsSerializer(params),
+    });
+
+    return response.data || {
+      total_projects: 0,
+      total_countries: 0,
+      total_amount: 0,
+      total_adaptation: 0,
+      total_mitigation: 0,
+      total_overlap: 0,
+    };
+  } catch (error) {
+    console.error("Error fetching heatmap KPIs:", error);
+    return {
+      total_projects: 0,
+      total_countries: 0,
+      total_amount: 0,
+      total_adaptation: 0,
+      total_mitigation: 0,
+      total_overlap: 0,
+      error: error.message,
+    };
+  }
+};
+
 // --- Função de KPIs (do seu DashboardPage novo) ---
 export const getKpisData = async () => {
     try {
