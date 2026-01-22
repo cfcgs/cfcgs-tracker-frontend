@@ -25,7 +25,7 @@ import {
     getRecipientCountries, getTotalsByObjective,
     getCommitmentTimeSeries, getAvailableYears,
     // --- Novas funções ---
-    getKpisData,
+    getHeatmapKpis,
 } from '../services/api';
 
 // Importe TODOS os componentes
@@ -42,7 +42,9 @@ import ObjectiveLineChart from '../components/dashboard/ObjectiveLineChart';
 import ObjectiveFilters from '../components/dashboard/ObjectiveFilters';
 
 // [NOVO] Importar mais ícones para os KPIs financeiros
-import { FiBox, FiGlobe, FiDollarSign, FiArrowDownCircle, FiCheckSquare } from 'react-icons/fi';
+import { FiBox, FiGlobe, FiDollarSign, FiShuffle } from 'react-icons/fi';
+import { IoSyncCircle } from 'react-icons/io5';
+import { RiShieldCheckLine } from 'react-icons/ri';
 
 // --- [CORREÇÃO] ChartCard atualizado para suportar layout flexível ---
 const ChartCard = ({
@@ -99,12 +101,16 @@ const DashboardPage = () => {
     const [loadingFilters, setLoadingFilters] = useState(true); // Renomeado de 'loading'
     const [globalError, setGlobalError] = useState(null); // Renomeado de 'error'
 
-    // --- Estados para KPIs (NOVO) ---
-    const [kpis, setKpis] = useState({ total_projects: 0, total_funded_countries: 0 });
-    const [kpisLoading, setKpisLoading] = useState(true);
-    // [NOVO] Estado para os KPIs financeiros TOTAIS (separado do gráfico de barras)
-    const [totalFinancialKpis, setTotalFinancialKpis] = useState({ total_pledge: 0, total_deposit: 0, total_approval: 0 });
-    const [totalKpisLoading, setTotalKpisLoading] = useState(true); // Loading para os KPIs financeiros
+    // --- Estados para KPIs do Heatmap ---
+    const [heatmapKpis, setHeatmapKpis] = useState({
+        total_projects: 0,
+        total_countries: 0,
+        total_amount: 0,
+        total_mitigation: 0,
+        total_adaptation: 0,
+        total_overlap: 0,
+    });
+    const [heatmapKpisLoading, setHeatmapKpisLoading] = useState(true);
 
     // --- Estados para Heatmap ---
     const [heatmapSelectedYears, setHeatmapSelectedYears] = useState([]);
@@ -141,13 +147,12 @@ const DashboardPage = () => {
     // --- Fetch inicial (Combinado) ---
     useEffect(() => {
         const loadInitialData = async () => {
-            // [CORREÇÃO] Adicionado setTotalKpisLoading(true)
-            setLoadingFilters(true); setKpisLoading(true); setTotalKpisLoading(true); setGlobalError(null);
+            setLoadingFilters(true); setHeatmapKpisLoading(true); setGlobalError(null);
             try {
                 // Carrega todos os filtros, KPIs e dados iniciais em paralelo
                 const [
                     yearsData, recipientCountriesData, fundTypesData, fundFocusesData,
-                    kpiData, fundsResponse, 
+                    fundsResponse,
                     // [CORREÇÃO] A variável projectsData foi removida antes, então este é o 7º item
                     initialTotalStatusData 
                 ] = await Promise.all([
@@ -155,9 +160,8 @@ const DashboardPage = () => {
                     getRecipientCountries(),         // 2
                     getFundTypes(),                  // 3
                     getFundFocuses(),                // 4
-                    getKpisData(),                   // 5
-                    getFundsData(),                  // 6 (Para Bubble e filtros)
-                    getFundStatusData()              // 7 <-- [CORREÇÃO] Chamada adicionada de volta!
+                    getFundsData(),                  // 5 (Para Bubble e filtros)
+                    getFundStatusData()              // 6 <-- [CORREÇÃO] Chamada adicionada de volta!
                     // A chamada para buscar projects foi removida antes (usa async agora)
                 ]);
                 
@@ -165,22 +169,55 @@ const DashboardPage = () => {
                 setAllRecipientCountries(recipientCountriesData || []);
                 setFundTypes(fundTypesData || []);
                 setFundFocuses(fundFocusesData || []);
-                setKpis(kpiData || { total_projects: 0, total_funded_countries: 0 });
                 setAllFunds(fundsResponse || []);
                 setBubbleChartData(fundsResponse || []);
-                setTotalFinancialKpis(initialTotalStatusData || { total_pledge: 0, total_deposit: 0, total_approval: 0 });
                 setBarChartData(initialTotalStatusData);
 
             } catch (error) {
                 console.error("Falha ao carregar dados iniciais:", error);
                 setGlobalError("Falha ao carregar opções de filtro ou KPIs. Verifique a conexão.");
             } finally {
-
-                setLoadingFilters(false); setKpisLoading(false); setTotalKpisLoading(false);
+                setLoadingFilters(false);
+                setHeatmapKpisLoading(false);
             }
         };
         loadInitialData();
     }, []);
+
+    useEffect(() => {
+        if (loadingFilters) return;
+        const fetchHeatmapKpis = async () => {
+            setHeatmapKpisLoading(true);
+            try {
+                const data = await getHeatmapKpis({
+                    years: heatmapSelectedYears,
+                    country_ids: heatmapSelectedCountryIds,
+                    project_ids: heatmapSelectedProjectIds,
+                    objective: heatmapSelectedObjective,
+                });
+                setHeatmapKpis(data);
+            } catch (error) {
+                console.error("Falha ao buscar KPIs do heatmap:", error);
+                setHeatmapKpis({
+                    total_projects: 0,
+                    total_countries: 0,
+                    total_amount: 0,
+                    total_mitigation: 0,
+                    total_adaptation: 0,
+                    total_overlap: 0,
+                });
+            } finally {
+                setHeatmapKpisLoading(false);
+            }
+        };
+        fetchHeatmapKpis();
+    }, [
+        loadingFilters,
+        heatmapSelectedYears,
+        heatmapSelectedCountryIds,
+        heatmapSelectedProjectIds,
+        heatmapSelectedObjective,
+    ]);
 
 
     // --- Fetch para Gráficos Antigos (Lógica Original do _old + 'loadingFilters') ---
@@ -312,81 +349,189 @@ const DashboardPage = () => {
 
 
     // --- [NOVO] Renderização dos KPIs (Com UX Melhorado e Novos KPIs Financeiros) ---
-    const KpiCard = ({ title, value, icon, isLoading, isCurrency = false }) => {
-        let formattedValue;
-        // Mostrar loading se isLoading for true
+    const KpiCard = ({
+        title,
+        value,
+        icon,
+        isLoading,
+        isCurrency = false,
+        accentColor = '#58A6FF',
+        gaugePercent,
+        watermarkIcon,
+    }) => {
+        let displayValue = '-';
+        let valueClassName = "text-3xl font-semibold text-white leading-tight";
+
         if (isLoading) {
-            formattedValue = <LoadingSpinner size="sm" />;
-        // Mostrar '-' se o valor for null ou undefined DEPOIS de carregar
+            displayValue = <LoadingSpinner size="sm" />;
+            valueClassName = "text-xl font-semibold text-white leading-tight";
         } else if (value === null || value === undefined) {
-            formattedValue = <p className="text-2xl font-semibold text-gray-500">-</p>;
-        // Mostrar 0 se o valor for 0
+            displayValue = '-';
+            valueClassName = "text-2xl font-semibold text-gray-500 leading-tight";
         } else if (value === 0) {
-            formattedValue = <p className="text-2xl font-semibold text-white">0</p>;
+            displayValue = '0';
         } else if (isCurrency) {
-            // Formatação para Moeda (Milhões ou Milhares)
             if (value >= 1000000) {
                 const valueInMillions = value / 1000000;
-                formattedValue = <p className="text-2xl font-semibold text-white">{`${valueInMillions.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mi`}</p>;
+                displayValue = `${valueInMillions.toLocaleString(undefined, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                })} mi`;
             } else if (value >= 1000) {
-                 const valueInThousands = value / 1000;
-                 formattedValue = <p className="text-2xl font-semibold text-white">{`${valueInThousands.toLocaleString(undefined, { maximumFractionDigits: 0 })} k`}</p>;
+                const valueInThousands = value / 1000;
+                displayValue = `${valueInThousands.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                })} k`;
             } else {
-                 formattedValue = <p className="text-2xl font-semibold text-white">{value.toLocaleString()}</p>;
+                displayValue = value.toLocaleString();
             }
         } else {
-            // Formatação para Número
-            formattedValue = <p className="text-2xl font-semibold text-white">{value.toLocaleString()}</p>;
+            displayValue = value.toLocaleString();
         }
 
+        const showGauge = typeof gaugePercent === 'number';
+        const clampedGauge = showGauge ? Math.max(0, Math.min(100, gaugePercent)) : 0;
+        const percentLabel = `${clampedGauge.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+        const gaugeTrack = '#1d2430';
+        const pointerRotation = -90 + (clampedGauge / 100) * 180;
+        const paddingRight = showGauge || watermarkIcon ? 'pr-28' : '';
+
         return (
-            // Design vertical
-            <div className="bg-dark-card p-4 rounded-lg shadow border border-dark-border flex flex-col items-center text-center">
-                <div className="text-4xl text-accent-blue mb-3">
-                    {icon}
+            <div className={`relative flex h-full min-h-0 flex-col justify-between rounded-2xl border border-dark-border/70 bg-gradient-to-br from-[#111827] via-[#0e1623] to-[#0b111b] p-3 shadow-[0_12px_22px_rgba(0,0,0,0.35)] ${paddingRight}`}>
+                <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl" style={{ background: accentColor }} />
+                {watermarkIcon && !showGauge && (
+                    <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[68px] opacity-15">
+                        <span style={{ color: accentColor }}>{watermarkIcon}</span>
+                    </div>
+                )}
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-dark-border bg-dark-card/70 text-[22px]">
+                        <span style={{ color: accentColor }}>{icon}</span>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="text-xs font-medium text-dark-text-secondary mb-1">{title}</h3>
-                    {formattedValue}
+                {showGauge && (
+                    <div className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2">
+                        <div className="relative h-16 w-28">
+                            <svg className="h-full w-full" viewBox="0 0 100 60">
+                                <path
+                                    d="M10 50 A40 40 0 0 1 90 50"
+                                    fill="none"
+                                    stroke={gaugeTrack}
+                                    strokeWidth="8"
+                                    strokeLinecap="round"
+                                />
+                                <path
+                                    d="M10 50 A40 40 0 0 1 90 50"
+                                    fill="none"
+                                    stroke={accentColor}
+                                    strokeWidth="8"
+                                    strokeLinecap="round"
+                                    pathLength="100"
+                                    strokeDasharray={`${clampedGauge} 100`}
+                                />
+                                <g transform={`rotate(${pointerRotation} 50 50)`}>
+                                    <line
+                                        x1="50"
+                                        y1="50"
+                                        x2="50"
+                                        y2="18"
+                                        stroke="#E5E7EB"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                    />
+                                    <circle cx="50" cy="50" r="3" fill="#E5E7EB" />
+                                </g>
+                            </svg>
+                            <div className="absolute inset-x-0 bottom-0 flex justify-center">
+                                <div className="rounded-full bg-dark-card/90 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow">
+                                    {isLoading ? (
+                                        <div className="h-2.5 w-12 animate-pulse rounded-full bg-dark-border/70" />
+                                    ) : (
+                                        percentLabel
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <div className="mt-2.5">
+                    <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-dark-text-secondary">
+                        {title}
+                    </h3>
+                    <div className={`mt-1 ${valueClassName}`}>{displayValue}</div>
+                    {showGauge && (
+                        <p className="mt-0 text-[10px] text-dark-text-secondary">do montante total</p>
+                    )}
                 </div>
             </div>
         );
     };
 
     const renderKpis = () => (
-        // Stack vertical
-        <div className="flex flex-col space-y-4">
-            {/* KPIs originais */}
-            <KpiCard title="Total Projetos" value={kpis.total_projects} icon={<FiBox />} isLoading={kpisLoading} />
-            <KpiCard title="Total Países" value={kpis.total_funded_countries} icon={<FiGlobe />} isLoading={kpisLoading || loadingFilters} />
-            
-            {/* KPIs Financeiros (usam totalFinancialKpis e totalKpisLoading) */}
-            <KpiCard 
-                title="Total Promessas (Pledge)" 
-                // Acessa o valor do estado correto
-                value={totalFinancialKpis?.total_pledge} 
+        <div className="grid min-h-0 max-h-[900px] grid-rows-6 gap-3 h-full">
+            <KpiCard
+                title="Total Projetos"
+                value={heatmapKpis.total_projects}
+                icon={<FiBox />}
+                watermarkIcon={<FiBox />}
+                isLoading={heatmapKpisLoading}
+                accentColor="#58A6FF"
+            />
+            <KpiCard
+                title="Total Países"
+                value={heatmapKpis.total_countries}
+                icon={<FiGlobe />}
+                watermarkIcon={<FiGlobe />}
+                isLoading={heatmapKpisLoading}
+                accentColor="#58A6FF"
+            />
+            <KpiCard
+                title="Montante Total (USD)"
+                value={heatmapKpis.total_amount}
                 icon={<FiDollarSign />}
-                // Usa o loading correto
-                isLoading={totalKpisLoading} 
-                isCurrency={true} 
+                watermarkIcon={<FiDollarSign />}
+                isLoading={heatmapKpisLoading}
+                isCurrency={true}
+                accentColor="#58A6FF"
             />
-            <KpiCard 
-                title="Total Depósitos (Deposit)" 
-                // Acessa o valor do estado correto
-                value={totalFinancialKpis?.total_deposit} 
-                icon={<FiArrowDownCircle />}
-                 // Usa o loading correto
-                isLoading={totalKpisLoading}
-                isCurrency={true} 
+            <KpiCard
+                title="Mitigação (USD)"
+                value={heatmapKpis.total_mitigation}
+                icon={<RiShieldCheckLine />}
+                isLoading={heatmapKpisLoading}
+                isCurrency={true}
+                accentColor="#58A6FF"
+                gaugePercent={
+                    heatmapKpis.total_amount
+                        ? (heatmapKpis.total_mitigation / heatmapKpis.total_amount) * 100
+                        : 0
+                }
             />
-            <KpiCard 
-                title="Total Aprovações (Approval)" 
-                // Acessa o valor do estado correto
-                value={totalFinancialKpis?.total_approval} 
-                icon={<FiCheckSquare />}
-                 // Usa o loading correto
-                isLoading={totalKpisLoading}
-                isCurrency={true} 
+            <KpiCard
+                title="Adaptação (USD)"
+                value={heatmapKpis.total_adaptation}
+                icon={<IoSyncCircle />}
+                isLoading={heatmapKpisLoading}
+                isCurrency={true}
+                accentColor="#58A6FF"
+                gaugePercent={
+                    heatmapKpis.total_amount
+                        ? (heatmapKpis.total_adaptation / heatmapKpis.total_amount) * 100
+                        : 0
+                }
+            />
+            <KpiCard
+                title="Ambos Objetivos (USD)"
+                value={heatmapKpis.total_overlap}
+                icon={<FiShuffle />}
+                isLoading={heatmapKpisLoading}
+                isCurrency={true}
+                accentColor="#58A6FF"
+                gaugePercent={
+                    heatmapKpis.total_amount
+                        ? (heatmapKpis.total_overlap / heatmapKpis.total_amount) * 100
+                        : 0
+                }
             />
         </div>
     );
@@ -405,10 +550,10 @@ const DashboardPage = () => {
             {/* --- Nova Linha Superior: KPIs + Heatmap --- */}
             {/* [CORREÇÃO LAYOUT] Adicionado 'items-start' para alinhar a coluna do KPI ao topo */}
             {/* Altura mínima ajustada para acomodar o Heatmap */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[700px] items-stretch mb-12">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[640px] items-stretch mb-[280px]">
                 
                 {/* [CORREÇÃO LAYOUT] Coluna Esquerda: KPIs (Agora alinhada ao topo e com novo design) */}
-                <div className="lg:col-span-1 self-start">
+                <div className="lg:col-span-1 h-full self-stretch">
                     {renderKpis()}
                 </div>
 
@@ -416,7 +561,7 @@ const DashboardPage = () => {
                 <div className="lg:col-span-3 h-full self-stretch min-h-0 overflow-hidden">
                     <ChartCard
                         title="Doações por País e Ano"
-                        className="h-full pb-6 overflow-visible"
+                        className="h-full pb-6"
                         sourceClassName="mt-4"
                         sources={[DATA_SOURCES.oecd]}
                     >
@@ -457,7 +602,7 @@ const DashboardPage = () => {
             {/* --- Seção Inferior: Gráficos Antigos (Layout Original + Correção de Altura) --- */}
             
             {/* [CORREÇÃO LAYOUT] Altura da LINHA definida aqui (mantendo seus 850px) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[800px]"> {/* Ajuste de altura para reduzir espaço vazio */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[800px] "> {/* Ajuste de altura para reduzir espaço vazio */}
                 <ChartCard
                     title="Análise de Fundos por Tamanho"
                     sources={[DATA_SOURCES.cfu]}
