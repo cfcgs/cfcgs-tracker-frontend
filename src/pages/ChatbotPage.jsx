@@ -96,28 +96,71 @@ const renderMarkdown = (text) => {
     ));
 };
 
+const INITIAL_BOT_MESSAGE = {
+    sender: 'bot',
+    text: 'Olá! Sou seu assistente de dados climáticos. Como posso ajudar com informações sobre fundos, projetos ou financiamentos?',
+};
+
+let cachedChatSession = null;
+
+const createSessionId = () => {
+    const cryptoApi = typeof window !== 'undefined' ? window.crypto : undefined;
+    return cryptoApi?.randomUUID
+        ? cryptoApi.randomUUID()
+        : `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+};
+
 const ChatbotPage = () => {
     const [input, setInput] = useState('');
-    const [messages, setMessages] = useState([
-        { sender: 'bot', text: 'Olá! Sou seu assistente de dados climáticos. Como posso ajudar com informações sobre fundos, projetos ou financiamentos?' }
-    ]);
+    const [messages, setMessages] = useState(
+        () => cachedChatSession?.messages ?? [INITIAL_BOT_MESSAGE],
+    );
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
-    const [pendingPaginationQuestion, setPendingPaginationQuestion] = useState(null);
-    const [activePagination, setActivePagination] = useState(null);
-    const [pendingDisambiguation, setPendingDisambiguation] = useState(null);
-    const [isAwaitingDisambiguation, setIsAwaitingDisambiguation] = useState(false);
+    const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(
+        () => cachedChatSession?.isAwaitingConfirmation ?? false,
+    );
+    const [pendingPaginationQuestion, setPendingPaginationQuestion] = useState(
+        () => cachedChatSession?.pendingPaginationQuestion ?? null,
+    );
+    const [activePagination, setActivePagination] = useState(
+        () => cachedChatSession?.activePagination ?? null,
+    );
+    const [pendingDisambiguation, setPendingDisambiguation] = useState(
+        () => cachedChatSession?.pendingDisambiguation ?? null,
+    );
+    const [isAwaitingDisambiguation, setIsAwaitingDisambiguation] = useState(
+        () => cachedChatSession?.isAwaitingDisambiguation ?? false,
+    );
+    const [sessionId, setSessionId] = useState(
+        () => cachedChatSession?.sessionId ?? createSessionId(),
+    );
+    const sessionIdRef = useRef(sessionId);
     const messagesEndRef = useRef(null);
-    const sessionIdRef = useRef(null);
 
-    if (!sessionIdRef.current) {
-        const cryptoApi = typeof window !== 'undefined' ? window.crypto : undefined;
-        sessionIdRef.current = cryptoApi?.randomUUID
-            ? cryptoApi.randomUUID()
-            : `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    }
-    const sessionId = sessionIdRef.current;
+    useEffect(() => {
+        sessionIdRef.current = sessionId;
+    }, [sessionId]);
+
+    useEffect(() => {
+        cachedChatSession = {
+            sessionId,
+            messages,
+            isAwaitingConfirmation,
+            pendingPaginationQuestion,
+            activePagination,
+            pendingDisambiguation,
+            isAwaitingDisambiguation,
+        };
+    }, [
+        sessionId,
+        messages,
+        isAwaitingConfirmation,
+        pendingPaginationQuestion,
+        activePagination,
+        pendingDisambiguation,
+        isAwaitingDisambiguation,
+    ]);
 
     // Efeito para rolar para o final quando novas mensagens chegam
     useEffect(() => {
@@ -170,7 +213,7 @@ const ChatbotPage = () => {
         if (option.kind && option.kind.startsWith('scope_')) {
             return option.name;
         }
-        if (option.kind === 'country' || option.kind === 'region') {
+        if (option.kind === 'country' || option.kind === 'region' || option.kind === 'project') {
             return option.name;
         }
         const kindLabel = option.kind || '';
@@ -243,7 +286,7 @@ const ChatbotPage = () => {
         try {
             const response = await askChatbot({
                 question: currentInput,
-                sessionId,
+                sessionId: sessionIdRef.current,
                 page: 1,
                 pageSize: DEFAULT_PAGE_SIZE,
                 confirmPagination: false,
@@ -262,6 +305,21 @@ const ChatbotPage = () => {
         }
     };
 
+    const handleNewConversation = () => {
+        const freshSession = createSessionId();
+        sessionIdRef.current = freshSession;
+        setSessionId(freshSession);
+        setMessages([INITIAL_BOT_MESSAGE]);
+        setInput('');
+        setLoading(false);
+        setError(null);
+        setIsAwaitingConfirmation(false);
+        setPendingPaginationQuestion(null);
+        setActivePagination(null);
+        setPendingDisambiguation(null);
+        setIsAwaitingDisambiguation(false);
+    };
+
     const requestPaginatedData = async ({ targetPage, userLabel, baseQuestion }) => {
         if (!baseQuestion) return;
         const sanitizedPage = Math.max(1, targetPage);
@@ -276,7 +334,7 @@ const ChatbotPage = () => {
             const response = await askChatbot({
                 // [CORREÇÃO AQUI] Passa a pergunta original do contexto PENDENTE
                 question: baseQuestion, 
-                sessionId,
+                sessionId: sessionIdRef.current,
                 page: sanitizedPage,
                 pageSize: DEFAULT_PAGE_SIZE,
                 confirmPagination: true,
@@ -326,7 +384,7 @@ const ChatbotPage = () => {
         try {
             const response = await askChatbot({
                 question: baseQuestion,
-                sessionId,
+                sessionId: sessionIdRef.current,
                 page: 1,
                 pageSize: DEFAULT_PAGE_SIZE,
                 confirmPagination: false,
@@ -389,7 +447,16 @@ const ChatbotPage = () => {
 
     return (
         <div className="flex flex-col h-screen bg-dark-bg text-dark-text p-4 md:p-6">
-            <h2 className="text-3xl font-bold mb-6 text-white">Assistente IA de Dados Climáticos</h2>
+            <div className="flex flex-col gap-3 mb-6 md:flex-row md:items-center md:justify-between">
+                <h2 className="text-3xl font-bold text-white">Assistente IA de Dados Climáticos</h2>
+                <button
+                    type="button"
+                    onClick={handleNewConversation}
+                    className="self-start rounded-lg border border-dark-border bg-dark-card px-4 py-2 text-sm font-semibold text-dark-text hover:border-accent-blue hover:text-accent-blue md:self-auto"
+                >
+                    Nova conversa
+                </button>
+            </div>
             
             {/* Área de Mensagens */}
             <div className="flex-grow overflow-y-auto mb-4 pr-2 space-y-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
