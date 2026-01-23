@@ -363,8 +363,8 @@ const DashboardPage = () => {
         let valueClassName = "text-3xl font-semibold text-white leading-tight";
 
         if (isLoading) {
-            displayValue = <LoadingSpinner size="sm" />;
-            valueClassName = "text-xl font-semibold text-white leading-tight";
+            displayValue = <LoadingSpinner size="xs" inline />;
+            valueClassName = "text-xl font-semibold text-white leading-tight flex items-center";
         } else if (value === null || value === undefined) {
             displayValue = '-';
             valueClassName = "text-2xl font-semibold text-gray-500 leading-tight";
