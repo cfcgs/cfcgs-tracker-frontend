@@ -129,7 +129,7 @@ const DashboardPage = () => {
     const [barSelectedFunds, setBarSelectedFunds] = useState([]);
     const [objectiveSelectedYears, setObjectiveSelectedYears] = useState([]);
     const [objectiveSelectedCountries, setObjectiveSelectedCountries] = useState([]);
-    const [objectiveSelectedObjectives, setObjectiveSelectedObjectives] = useState(['Adaptação', 'Mitigação', 'Ambos']); // <-- 'Ambos' adicionado
+    const [objectiveSelectedObjectives, setObjectiveSelectedObjectives] = useState(['Adaptação', 'Mitigação', 'Ambos']);
 
     // --- Estados para dados processados (do _old) ---
     const [lineChartSeries, setLineChartSeries] = useState([]);
@@ -332,7 +332,7 @@ const DashboardPage = () => {
             series.push({ name: 'Mitigação', data: mitigationData, color: Highcharts.getOptions().colors[1] });
         }
         if (objectiveSelectedObjectives.includes('Ambos')) {
-             series.push({ name: 'Ambos (Overlap)', data: overlapData, color: Highcharts.getOptions().colors[2] });
+             series.push({ name: 'Ambos', data: overlapData, color: Highcharts.getOptions().colors[2] });
         }
         return series;
     }, [objectiveTotals, objectiveSelectedObjectives]);
@@ -521,7 +521,7 @@ const DashboardPage = () => {
                 }
             />
             <KpiCard
-                title="Ambos Objetivos (USD)"
+                title="Ambos (USD)"
                 value={heatmapKpis.total_overlap}
                 icon={<FiShuffle />}
                 isLoading={heatmapKpisLoading}
@@ -658,7 +658,7 @@ const DashboardPage = () => {
                      <ObjectiveFilters
                         years={availableYears}
                         countries={allRecipientCountries} // Passa OBJETOS {id, name}
-                        objectives={['Adaptação', 'Mitigação', 'Ambos']} // [CORREÇÃO] Adicionado 'Ambos'
+                        objectives={['Adaptação', 'Mitigação', 'Ambos']}
                         selectedYears={objectiveSelectedYears}
                         selectedCountries={objectiveSelectedCountries} // Espera IDs
                         selectedObjectives={objectiveSelectedObjectives} // Espera Nomes
