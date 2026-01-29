@@ -42,6 +42,14 @@ function App() {
     const [filterProgress, setFilterProgress] = useState({});
     const mainRef = useRef(null);
 
+    useEffect(() => {
+        const sources = [EcoBotSaudando, EcoBotExplicando, EcoBotFinalizando];
+        sources.forEach((src) => {
+            const img = new Image();
+            img.src = src;
+        });
+    }, []);
+
     const tourSteps = useMemo(() => ([
         {
             id: 'welcome',
