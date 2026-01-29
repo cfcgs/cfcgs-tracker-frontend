@@ -18,7 +18,7 @@ const ObjectiveFilters = ({ years, countries, objectives, selectedYears, selecte
     const objectiveOptions = objectives.map(obj => ({ value: obj, label: obj }));
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4" data-tour="objective-filters">
             {/* Filtro de Ano */}
             <div className="flex-1">
                 <label className="block text-sm font-medium text-dark-text-secondary mb-1">Anos</label>
@@ -26,7 +26,18 @@ const ObjectiveFilters = ({ years, countries, objectives, selectedYears, selecte
                     isMulti
                     options={yearOptions}
                     value={yearOptions.filter(opt => selectedYears.includes(opt.value))}
-                    onChange={selected => onYearChange(selected ? selected.map(opt => opt.value) : [])}
+                    onChange={selected => {
+                        onYearChange(selected ? selected.map(opt => opt.value) : []);
+                        if (typeof document !== 'undefined') {
+                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                detail: {
+                                    stepId: 'objective-filters',
+                                    filter: 'years',
+                                    filled: Boolean(selected?.length),
+                                },
+                            }));
+                        }
+                    }}
                     styles={selectStyles}
                     placeholder="Todos os Anos"
                 />
@@ -38,7 +49,18 @@ const ObjectiveFilters = ({ years, countries, objectives, selectedYears, selecte
                     isMulti
                     options={countryOptions}
                     value={countryOptions.filter(opt => selectedCountries.includes(opt.value))}
-                    onChange={selected => onCountryChange(selected ? selected.map(opt => opt.value) : [])}
+                    onChange={selected => {
+                        onCountryChange(selected ? selected.map(opt => opt.value) : []);
+                        if (typeof document !== 'undefined') {
+                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                detail: {
+                                    stepId: 'objective-filters',
+                                    filter: 'countries',
+                                    filled: Boolean(selected?.length),
+                                },
+                            }));
+                        }
+                    }}
                     styles={selectStyles}
                     placeholder="Todos os Países"
                 />
@@ -50,7 +72,18 @@ const ObjectiveFilters = ({ years, countries, objectives, selectedYears, selecte
                     isMulti
                     options={objectiveOptions}
                     value={objectiveOptions.filter(opt => selectedObjectives.includes(opt.value))}
-                    onChange={selected => onObjectiveChange(selected ? selected.map(opt => opt.value) : [])}
+                    onChange={selected => {
+                        onObjectiveChange(selected ? selected.map(opt => opt.value) : []);
+                        if (typeof document !== 'undefined') {
+                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                detail: {
+                                    stepId: 'objective-filters',
+                                    filter: 'objectives',
+                                    filled: Boolean(selected?.length),
+                                },
+                            }));
+                        }
+                    }}
                     styles={selectStyles}
                     placeholder="Todos os Objetivos"
                 />

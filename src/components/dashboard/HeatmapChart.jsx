@@ -762,9 +762,48 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
         }, 220);
     }, [clearTooltip]);
 
+    const exportButtonRef = useRef(null);
+    const positionExportMenu = useCallback(() => {
+        const chart = chartRef.current?.chart;
+        if (!chart) return;
+        const menu = chart.container?.querySelector('.highcharts-contextmenu');
+        if (!menu) return;
+        const anchorRect = exportButtonRef.current?.getBoundingClientRect()
+            || chart.container?.querySelector('.highcharts-contextbutton')?.getBoundingClientRect();
+        if (!anchorRect) return;
+
+        document.body.appendChild(menu);
+        menu.style.position = 'fixed';
+        menu.style.zIndex = '9999';
+        menu.style.pointerEvents = 'auto';
+        menu.style.maxHeight = '70vh';
+        menu.style.overflow = 'auto';
+
+        requestAnimationFrame(() => {
+            const menuRect = menu.getBoundingClientRect();
+            const left = Math.min(anchorRect.left, window.innerWidth - menuRect.width - 8);
+            const top = Math.min(anchorRect.bottom + 6, window.innerHeight - menuRect.height - 8);
+            menu.style.left = `${Math.max(8, left)}px`;
+            menu.style.top = `${Math.max(8, top)}px`;
+            menu.querySelectorAll('.highcharts-menu-item').forEach((item) => {
+                if (item.dataset.tourExportEvent === 'tour:export-heatmap') return;
+                item.dataset.tourExportEvent = 'tour:export-heatmap';
+                item.addEventListener('click', () => {
+                    document.dispatchEvent(new CustomEvent('tour:export-heatmap'));
+                });
+            });
+        });
+    }, []);
+
     const handleExportClick = useCallback(() => {
         const chart = chartRef.current?.chart;
         if (!chart) {
+            return;
+        }
+        const btn = chart.container?.querySelector('.highcharts-contextbutton');
+        if (btn) {
+            btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            setTimeout(() => positionExportMenu(), 0);
             return;
         }
         if (chart.exporting?.showExportMenu) {
@@ -794,6 +833,31 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
             height: rows.length * ROW_HEIGHT,
             width: columns.length * CELL_WIDTH,
             animation: false,
+            events: {
+                render() {
+                    const btn = this.container?.querySelector('.highcharts-contextbutton');
+                    if (btn) {
+                        btn.setAttribute('data-tour', 'heatmap-export-menu');
+                        btn.style.pointerEvents = 'none';
+                        if (!btn.dataset.tourExportHook) {
+                            btn.dataset.tourExportHook = '1';
+                            btn.addEventListener('click', () => {
+                                setTimeout(() => {
+                                    const menu = this.container?.querySelector('.highcharts-contextmenu');
+                                    if (!menu) return;
+                                    menu.querySelectorAll('.highcharts-menu-item').forEach((item) => {
+                                        if (item.dataset.tourExportEvent === 'tour:export-heatmap') return;
+                                        item.dataset.tourExportEvent = 'tour:export-heatmap';
+                                        item.addEventListener('click', () => {
+                                            document.dispatchEvent(new CustomEvent('tour:export-heatmap'));
+                                        });
+                                    });
+                                }, 0);
+                            });
+                        }
+                    }
+                },
+            },
         },
         title: { text: null },
         xAxis: {
@@ -862,7 +926,25 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
             enabled: true,
             buttons: {
                 contextButton: {
-                    enabled: false,
+                    enabled: true,
+                    menuItems: [
+                        'viewFullscreen',
+                        'printChart',
+                        'separator',
+                        'downloadPNG',
+                        'downloadJPEG',
+                        'downloadPDF',
+                        'downloadSVG',
+                    ],
+                    theme: {
+                        style: {
+                            opacity: 0,
+                        },
+                        states: {
+                            hover: { opacity: 0 },
+                            select: { opacity: 0 },
+                        },
+                    },
                 },
             },
             chartOptions: {
@@ -1095,9 +1177,16 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                     <div className="flex items-center justify-end pb-2">
                         <button
                             type="button"
-                            className="rounded-md border border-dark-border bg-dark-card px-3 py-1 text-xs text-dark-text-secondary hover:text-dark-text"
+                            className="flex items-center gap-2 rounded-md border border-dark-border bg-dark-card px-3 py-1 text-xs text-dark-text-secondary hover:text-dark-text"
                             onClick={handleExportClick}
+                            data-tour="heatmap-export"
+                            ref={exportButtonRef}
                         >
+                            <span className="inline-flex flex-col gap-[3px]">
+                                <span className="block h-[2px] w-[14px] rounded bg-dark-text-secondary"></span>
+                                <span className="block h-[2px] w-[14px] rounded bg-dark-text-secondary"></span>
+                                <span className="block h-[2px] w-[14px] rounded bg-dark-text-secondary"></span>
+                            </span>
                             Exportar
                         </button>
                     </div>

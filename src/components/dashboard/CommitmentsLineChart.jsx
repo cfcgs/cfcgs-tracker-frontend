@@ -3,9 +3,48 @@ import React from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 
+import "highcharts/modules/exporting";
+import "highcharts/modules/offline-exporting";
+
 const LineChart = ({ seriesData, title }) => {
     const options = {
-        chart: { type: 'areaspline' },
+        chart: {
+            type: 'areaspline',
+            events: {
+                render() {
+                    const btn = this.container?.querySelector('.highcharts-contextbutton');
+                    if (btn) {
+                        btn.setAttribute('data-tour', 'commitments-export');
+                        if (!btn.dataset.tourExportHook) {
+                            btn.dataset.tourExportHook = '1';
+                            btn.addEventListener('click', () => {
+                                setTimeout(() => {
+                                    const menu = this.container?.querySelector('.highcharts-contextmenu');
+                                    if (!menu) return;
+                                    menu.querySelectorAll('.highcharts-menu-item').forEach((item) => {
+                                        if (item.dataset.tourExportEvent === 'tour:export-commitments') return;
+                                        item.dataset.tourExportEvent = 'tour:export-commitments';
+                                        item.addEventListener('click', () => {
+                                            document.dispatchEvent(new CustomEvent('tour:export-commitments'));
+                                        });
+                                    });
+                                }, 0);
+                            });
+                        }
+                    }
+                    const menu = this.container?.querySelector('.highcharts-contextmenu');
+                    if (menu) {
+                        menu.querySelectorAll('.highcharts-menu-item').forEach((item) => {
+                            if (item.dataset.tourExportEvent === 'tour:export-commitments') return;
+                            item.dataset.tourExportEvent = 'tour:export-commitments';
+                            item.addEventListener('click', () => {
+                                document.dispatchEvent(new CustomEvent('tour:export-commitments'));
+                            });
+                        });
+                    }
+                }
+            }
+        },
         title: { text: title },
         xAxis: {
             type: 'category', // Anos
@@ -25,7 +64,14 @@ const LineChart = ({ seriesData, title }) => {
                 marker: { enabled: false }
             }
         },
-        series: seriesData
+        series: seriesData,
+        exporting: {
+            buttons: {
+                contextButton: {
+                    menuItems: ["viewFullscreen", "printChart", "separator", "downloadPNG", "downloadJPEG", "downloadPDF", "downloadSVG"]
+                }
+            }
+        }
     };
 
     return <HighchartsReact highcharts={Highcharts} options={options} />;

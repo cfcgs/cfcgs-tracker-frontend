@@ -54,3 +54,37 @@ body {
 .table-scroll-wrapper {
     overflow-x: auto;
 }
+
+@keyframes evalPop {
+    0% {
+        opacity: 0;
+        transform: translateY(12px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.animate-eval-pop {
+    animation: evalPop 280ms ease-out both;
+}
+
+@keyframes tourDrop {
+    0% {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(2px) scale(1.01);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.animate-tour-drop {
+    animation: tourDrop 220ms ease-out both;
+}

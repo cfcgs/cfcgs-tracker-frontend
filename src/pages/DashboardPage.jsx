@@ -53,9 +53,13 @@ const ChartCard = ({
     className = "",
     sources = [],
     sourceClassName = "mt-2",
+    dataTour,
 }) => (
     // Adicionado overflow-hidden para garantir que o conteúdo não vaze
-    <div className={`relative bg-dark-card border border-dark-border rounded-xl p-4 pb-4 flex flex-col h-full min-h-0 overflow-hidden ${className}`}>
+    <div
+        className={`relative bg-dark-card border border-dark-border rounded-xl p-4 pb-4 flex flex-col h-full min-h-0 overflow-hidden ${className}`}
+        data-tour={dataTour}
+    >
         {title && <h3 className="text-xl font-semibold text-dark-text mb-4">{title}</h3>}
         {/* flex-grow e min-h-0 permitem que o conteúdo interno use o espaço */}
         <div className="relative z-0 flex-grow flex flex-col min-h-0">{children}</div>
@@ -559,12 +563,13 @@ const DashboardPage = () => {
 
                 {/* Coluna Direita: Filtros e Heatmap */}
                 <div className="lg:col-span-3 h-full self-stretch min-h-0 overflow-hidden">
-                    <ChartCard
-                        title="Doações por País e Ano"
-                        className="h-full pb-6"
-                        sourceClassName="mt-4"
-                        sources={[DATA_SOURCES.oecd]}
-                    >
+                <ChartCard
+                    title="Doações por País Receptor e Ano"
+                    className="h-full pb-6"
+                    sourceClassName="mt-4"
+                    sources={[DATA_SOURCES.oecd]}
+                    dataTour="heatmap-chart"
+                >
                         {/* Filtros Heatmap */}
                         <HeatmapFilters
                             allYears={availableYears}
@@ -607,6 +612,7 @@ const DashboardPage = () => {
                     title="Análise de Fundos por Tamanho"
                     sources={[DATA_SOURCES.cfu]}
                     sourceClassName="mt-1"
+                    dataTour="bubble-chart"
                 >
                      <BubbleChartFilters
                         allFunds={allFunds} // Passa allFunds
@@ -627,6 +633,7 @@ const DashboardPage = () => {
                      title="Status Financeiro Agregado"
                      sources={[DATA_SOURCES.cfu]}
                      sourceClassName="mt-1"
+                     dataTour="status-chart"
                  >
                      <BarChartFilters
                         allFunds={allFunds}
@@ -654,6 +661,7 @@ const DashboardPage = () => {
                     className="pb-8"
                     sourceClassName="mt-4"
                     sources={[DATA_SOURCES.oecd]}
+                    dataTour="objective-chart"
                 >
                      <ObjectiveFilters
                         years={availableYears}
@@ -680,6 +688,7 @@ const DashboardPage = () => {
                      className="pb-8"
                      sourceClassName="mt-4"
                      sources={[DATA_SOURCES.oecd]}
+                     dataTour="commitments-chart"
                  >
                     <Filters // Nome original
                         years={availableYears}

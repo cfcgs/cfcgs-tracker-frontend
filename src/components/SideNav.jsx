@@ -1,13 +1,13 @@
 import React from 'react';
 import { FiGrid, FiBarChart2, FiCircle, FiTable, FiUpload, FiMessageSquare } from 'react-icons/fi';
 
-const SideNav = ({ activeView, onNavChange }) => {
+const SideNav = ({ activeView, onNavChange, footer }) => {
     const navItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: <FiGrid /> },
-        { id: 'datagrid', label: 'Tabelas Completas', icon: <FiTable /> },
+        { id: 'dashboard', label: 'Dashboard', icon: <FiGrid />, tour: 'nav-dashboard' },
+        { id: 'datagrid', label: 'Tabelas Completas', icon: <FiTable />, tour: 'nav-datagrid' },
         // { id: 'reports', label: 'Relatórios', icon: <FiBarChart2 /> },
         // { id: 'funds', label: 'Fundos', icon: <FiCircle /> },
-        { id: 'chatbot', label: 'Assistente IA', icon: <FiMessageSquare /> },
+        { id: 'chatbot', label: 'Assistente IA', icon: <FiMessageSquare />, tour: 'nav-chatbot' },
         // { id: 'upload', label: 'Upload de Dados', icon: <FiUpload /> },
     ];
 
@@ -27,6 +27,7 @@ const SideNav = ({ activeView, onNavChange }) => {
                                     ? 'bg-accent-blue text-white' 
                                     : 'text-dark-text-secondary hover:bg-gray-700 hover:text-white'}`
                             }
+                            data-tour={item.tour}
                         >
                             <span className="mr-3 text-xl">{item.icon}</span>
                             <span>{item.label}</span>
@@ -34,6 +35,7 @@ const SideNav = ({ activeView, onNavChange }) => {
                     </li>
                 ))}
             </ul>
+            {footer && <div className="mt-auto pt-6">{footer}</div>}
         </nav>
     );
 };
