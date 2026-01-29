@@ -25,14 +25,25 @@ const BubbleChartFilters = ({
   const focusOptions = fundFocuses.map(focus => ({ value: focus.id, label: focus.name }));
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4" data-tour="bubble-filters">
       <div className="flex-1">
         <label className="block text-sm font-medium text-dark-text-secondary mb-1">Tipos de Fundo</label>
         <Select
             isMulti
             options={typeOptions}
             value={typeOptions.filter(opt => selectedTypes.includes(opt.value))}
-            onChange={onTypeChange}
+            onChange={(selected) => {
+              onTypeChange(selected);
+              if (typeof document !== 'undefined') {
+                document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                  detail: {
+                    stepId: 'bubble-filters',
+                    filter: 'types',
+                    filled: Boolean(selected?.length),
+                  },
+                }));
+              }
+            }}
             styles={selectStyles}
             placeholder="Todos os Tipos"
         />
@@ -43,7 +54,18 @@ const BubbleChartFilters = ({
             isMulti
             options={focusOptions}
             value={focusOptions.filter(opt => selectedFocuses.includes(opt.value))}
-            onChange={onFocusChange}
+            onChange={(selected) => {
+              onFocusChange(selected);
+              if (typeof document !== 'undefined') {
+                document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                  detail: {
+                    stepId: 'bubble-filters',
+                    filter: 'focuses',
+                    filled: Boolean(selected?.length),
+                  },
+                }));
+              }
+            }}
             styles={selectStyles}
             placeholder="Todos os Focos"
         />

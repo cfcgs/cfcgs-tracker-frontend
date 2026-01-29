@@ -57,7 +57,7 @@ const DataGridPage = () => {
             <div className="bg-dark-card border border-dark-border rounded-xl p-4 mb-8">
                  <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-semibold text-dark-text">Tabela Detalhada de Fundos</h3>
-                    <button onClick={exportFundsToCsv} className="bg-accent-blue text-white px-3 py-1 rounded-md flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <button onClick={exportFundsToCsv} className="bg-accent-blue text-white px-3 py-1 rounded-md flex items-center gap-2 hover:opacity-80 transition-opacity" data-tour="datagrid-download">
                         <FiDownload /> Baixar CSV
                     </button>
                 </div>

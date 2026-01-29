@@ -46,7 +46,42 @@ const BubbleChart = ({ fundsData }) => {
       type: 'bubble',
       plotBorderWidth: 1,
       zoomType: 'xy',
-      height: chartHeight || null
+      height: chartHeight || null,
+      events: {
+        render() {
+          const btn = this.container?.querySelector('.highcharts-contextbutton');
+          if (btn) {
+            btn.setAttribute('data-tour', 'bubble-export');
+            if (!btn.dataset.tourExportHook) {
+              btn.dataset.tourExportHook = '1';
+              btn.addEventListener('click', () => {
+                setTimeout(() => {
+                  const menu = this.container?.querySelector('.highcharts-contextmenu');
+                  if (menu) {
+                    menu.querySelectorAll('.highcharts-menu-item').forEach((item) => {
+                      if (item.dataset.tourExportEvent === 'tour:export-bubble') return;
+                      item.dataset.tourExportEvent = 'tour:export-bubble';
+                      item.addEventListener('click', () => {
+                        document.dispatchEvent(new CustomEvent('tour:export-bubble'));
+                      });
+                    });
+                  }
+                }, 0);
+              });
+            }
+          }
+          const menu = this.container?.querySelector('.highcharts-contextmenu');
+          if (menu) {
+            menu.querySelectorAll('.highcharts-menu-item').forEach((item) => {
+              if (item.dataset.tourExportEvent === 'tour:export-bubble') return;
+              item.dataset.tourExportEvent = 'tour:export-bubble';
+              item.addEventListener('click', () => {
+                document.dispatchEvent(new CustomEvent('tour:export-bubble'));
+              });
+            });
+          }
+        }
+      }
     },
     title: {
       text: 'Visão Geral dos Fundos Climáticos' // Traduzido
@@ -91,6 +126,13 @@ const BubbleChart = ({ fundsData }) => {
         zMax: 15000,
         dataLabels: {
           enabled: false
+        },
+        point: {
+          events: {
+            mouseOver() {
+              document.dispatchEvent(new CustomEvent('tour:bubble-tooltip'));
+            }
+          }
         }
       }
     },

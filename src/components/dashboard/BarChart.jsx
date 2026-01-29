@@ -48,6 +48,40 @@ const BarChart = ({ statusData }) => {
         chart: {
             type: 'bar',
             height: chartHeight || null,
+            events: {
+                render() {
+                    const btn = this.container?.querySelector('.highcharts-contextbutton');
+                    if (btn) {
+                        btn.setAttribute('data-tour', 'status-export');
+                        if (!btn.dataset.tourExportHook) {
+                            btn.dataset.tourExportHook = '1';
+                            btn.addEventListener('click', () => {
+                                setTimeout(() => {
+                                    const menu = this.container?.querySelector('.highcharts-contextmenu');
+                                    if (!menu) return;
+                                    menu.querySelectorAll('.highcharts-menu-item').forEach((item) => {
+                                        if (item.dataset.tourExportEvent === 'tour:export-status') return;
+                                        item.dataset.tourExportEvent = 'tour:export-status';
+                                        item.addEventListener('click', () => {
+                                            document.dispatchEvent(new CustomEvent('tour:export-status'));
+                                        });
+                                    });
+                                }, 0);
+                            });
+                        }
+                    }
+                    const menu = this.container?.querySelector('.highcharts-contextmenu');
+                    if (menu) {
+                        menu.querySelectorAll('.highcharts-menu-item').forEach((item) => {
+                            if (item.dataset.tourExportEvent === 'tour:export-status') return;
+                            item.dataset.tourExportEvent = 'tour:export-status';
+                            item.addEventListener('click', () => {
+                                document.dispatchEvent(new CustomEvent('tour:export-status'));
+                            });
+                        });
+                    }
+                }
+            }
         },
         title: {
             text: 'Status Financeiro dos Fundos' // Traduzido

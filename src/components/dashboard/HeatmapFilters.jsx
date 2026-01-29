@@ -100,6 +100,15 @@ const HeatmapFilters = ({
     const getSelectedOptions = (options, values) => options.filter(opt => values.includes(opt.value));
     const handleProjectChange = (selectedOptions) => {
         onProjectChange(selectedOptions ? selectedOptions.map(opt => opt.value) : []);
+        if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                detail: {
+                    stepId: 'heatmap-filters',
+                    filter: 'projects',
+                    filled: Boolean(selectedOptions?.length),
+                },
+            }));
+        }
     };
 
     const selectedProjectObjects = selectedProjectIds.map(id => {
@@ -107,7 +116,10 @@ const HeatmapFilters = ({
     });
 
     return (
-        <div className="flex flex-wrap gap-4 p-4 bg-dark-card rounded-lg shadow mb-4 items-center transition-all duration-200 ease-in-out">
+        <div
+            className="flex flex-wrap gap-4 p-4 bg-dark-card rounded-lg shadow mb-4 items-center transition-all duration-200 ease-in-out"
+            data-tour="heatmap-filters"
+        >
             
             {/* Year Filter (Multi Select) */}
             <div className="flex-grow min-w-[150px]">
@@ -116,7 +128,18 @@ const HeatmapFilters = ({
                     isMulti
                     options={yearOptions}
                     value={getSelectedOptions(yearOptions, selectedYears)}
-                    onChange={(selectedOptions) => onYearChange(selectedOptions.map(opt => opt.value))}
+                    onChange={(selectedOptions) => {
+                        onYearChange(selectedOptions.map(opt => opt.value));
+                        if (typeof document !== 'undefined') {
+                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                detail: {
+                                    stepId: 'heatmap-filters',
+                                    filter: 'years',
+                                    filled: Boolean(selectedOptions?.length),
+                                },
+                            }));
+                        }
+                    }}
                     styles={selectStyles}
                     placeholder="Todos os Anos"
                     closeMenuOnSelect={false}
@@ -130,7 +153,18 @@ const HeatmapFilters = ({
                     isMulti
                     options={countryOptions}
                     value={getSelectedOptions(countryOptions, selectedCountryIds)}
-                    onChange={(selectedOptions) => onCountryChange(selectedOptions.map(opt => opt.value))}
+                    onChange={(selectedOptions) => {
+                        onCountryChange(selectedOptions.map(opt => opt.value));
+                        if (typeof document !== 'undefined') {
+                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                detail: {
+                                    stepId: 'heatmap-filters',
+                                    filter: 'countries',
+                                    filled: Boolean(selectedOptions?.length),
+                                },
+                            }));
+                        }
+                    }}
                     styles={selectStyles}
                     placeholder="Todos os Países"
                     closeMenuOnSelect={false}
@@ -160,7 +194,18 @@ const HeatmapFilters = ({
                 <Select
                     options={objectiveOptions}
                     value={getSelectedOption(objectiveOptions, selectedObjective)}
-                    onChange={(selectedOption) => onObjectiveChange(selectedOption ? selectedOption.value : 'all')}
+                    onChange={(selectedOption) => {
+                        onObjectiveChange(selectedOption ? selectedOption.value : 'all');
+                        if (typeof document !== 'undefined') {
+                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                detail: {
+                                    stepId: 'heatmap-filters',
+                                    filter: 'objective',
+                                    filled: Boolean(selectedOption),
+                                },
+                            }));
+                        }
+                    }}
                     styles={selectStyles}
                     placeholder="Todos Objetivos"
                 />
@@ -172,7 +217,18 @@ const HeatmapFilters = ({
                 <Select
                     options={viewOptions}
                     value={getSelectedOption(viewOptions, selectedView)}
-                    onChange={(selectedOption) => onViewChange(selectedOption ? selectedOption.value : 'country_year')}
+                    onChange={(selectedOption) => {
+                        onViewChange(selectedOption ? selectedOption.value : 'country_year');
+                        if (typeof document !== 'undefined') {
+                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                detail: {
+                                    stepId: 'heatmap-filters',
+                                    filter: 'view',
+                                    filled: Boolean(selectedOption),
+                                },
+                            }));
+                        }
+                    }}
                     styles={selectStyles}
                     placeholder="Selecionar Visão"
                 />

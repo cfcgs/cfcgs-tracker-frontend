@@ -167,6 +167,15 @@ const ChatbotPage = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    useEffect(() => {
+        if (!messages.length) return;
+        const lastMessage = messages[messages.length - 1];
+        const hasUserMessage = messages.some((msg) => msg.sender === 'user');
+        if (hasUserMessage && lastMessage.sender === 'bot') {
+            document.dispatchEvent(new CustomEvent('tour:chatbot-response'));
+        }
+    }, [messages]);
+
     const formatCellValue = (value) => {
         if (value === null || value === undefined) return '\u2014';
         if (typeof value === 'number') {
@@ -610,7 +619,7 @@ const ChatbotPage = () => {
             )}
 
             {/* Área de Input */}
-            <form onSubmit={handleSubmit} className="flex items-center gap-3 border-t border-dark-border pt-4">
+            <form onSubmit={handleSubmit} className="flex items-center gap-3 border-t border-dark-border pt-4" data-tour="chatbot-input">
                 <input
                     type="text"
                     value={input}

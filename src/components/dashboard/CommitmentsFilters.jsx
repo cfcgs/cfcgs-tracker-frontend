@@ -43,14 +43,25 @@ const Filters = ({ years, countries, selectedYears, selectedCountries, onYearCha
     const countryOptions = countries.map(country => ({ value: country, label: country }));
 
     return (
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4 mb-6" data-tour="commitments-filters">
             <div className="flex-1">
                 <label className="block text-sm font-medium text-dark-text-secondary mb-1">Anos</label>
                 <Select
                     isMulti
                     options={yearOptions}
                     value={yearOptions.filter(opt => selectedYears.includes(opt.value))}
-                    onChange={selected => onYearChange(selected.map(opt => opt.value))}
+                    onChange={selected => {
+                        onYearChange(selected.map(opt => opt.value));
+                        if (typeof document !== 'undefined') {
+                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                detail: {
+                                    stepId: 'commitments-filters',
+                                    filter: 'years',
+                                    filled: Boolean(selected?.length),
+                                },
+                            }));
+                        }
+                    }}
                     styles={selectStyles}
                     placeholder="Todos os anos"
                 />
@@ -61,7 +72,18 @@ const Filters = ({ years, countries, selectedYears, selectedCountries, onYearCha
                     isMulti
                     options={countryOptions}
                     value={countryOptions.filter(opt => selectedCountries.includes(opt.value))}
-                    onChange={selected => onCountryChange(selected.map(opt => opt.value))}
+                    onChange={selected => {
+                        onCountryChange(selected.map(opt => opt.value));
+                        if (typeof document !== 'undefined') {
+                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                detail: {
+                                    stepId: 'commitments-filters',
+                                    filter: 'countries',
+                                    filled: Boolean(selected?.length),
+                                },
+                            }));
+                        }
+                    }}
                     styles={selectStyles}
                     placeholder="Selecione um ou mais países..."
                 />
