@@ -800,26 +800,15 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
         if (!chart) {
             return;
         }
+        if (chart.exporting?.showExportMenu) {
+            chart.exporting.showExportMenu();
+            setTimeout(() => positionExportMenu(), 0);
+            return;
+        }
         const btn = chart.container?.querySelector('.highcharts-contextbutton');
         if (btn) {
             btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             setTimeout(() => positionExportMenu(), 0);
-            return;
-        }
-        if (chart.exporting?.showExportMenu) {
-            chart.exporting.showExportMenu();
-            return;
-        }
-        if (chart.exporting?.exportChartLocal) {
-            chart.exporting.exportChartLocal();
-            return;
-        }
-        if (chart.exportChartLocal) {
-            chart.exportChartLocal();
-            return;
-        }
-        if (chart.exportChart) {
-            chart.exportChart();
         }
     }, []);
 
@@ -834,29 +823,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
             width: columns.length * CELL_WIDTH,
             animation: false,
             events: {
-                render() {
-                    const btn = this.container?.querySelector('.highcharts-contextbutton');
-                    if (btn) {
-                        btn.setAttribute('data-tour', 'heatmap-export-menu');
-                        btn.style.pointerEvents = 'none';
-                        if (!btn.dataset.tourExportHook) {
-                            btn.dataset.tourExportHook = '1';
-                            btn.addEventListener('click', () => {
-                                setTimeout(() => {
-                                    const menu = this.container?.querySelector('.highcharts-contextmenu');
-                                    if (!menu) return;
-                                    menu.querySelectorAll('.highcharts-menu-item').forEach((item) => {
-                                        if (item.dataset.tourExportEvent === 'tour:export-heatmap') return;
-                                        item.dataset.tourExportEvent = 'tour:export-heatmap';
-                                        item.addEventListener('click', () => {
-                                            document.dispatchEvent(new CustomEvent('tour:export-heatmap'));
-                                        });
-                                    });
-                                }, 0);
-                            });
-                        }
-                    }
-                },
+                render() {},
             },
         },
         title: { text: null },
@@ -937,9 +904,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                         'downloadSVG',
                     ],
                     theme: {
-                        style: {
-                            opacity: 0,
-                        },
+                        style: { opacity: 0 },
                         states: {
                             hover: { opacity: 0 },
                             select: { opacity: 0 },
@@ -1175,20 +1140,24 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
             {!error && (
                 <div className="flex flex-1 min-h-0 flex-col">
                     <div className="flex items-center justify-end pb-2">
-                        <button
-                            type="button"
-                            className="flex items-center gap-2 rounded-md border border-dark-border bg-dark-card px-3 py-1 text-xs text-dark-text-secondary hover:text-dark-text"
-                            onClick={handleExportClick}
+                        <div
+                            className="inline-flex items-center justify-center"
                             data-tour="heatmap-export"
                             ref={exportButtonRef}
                         >
-                            <span className="inline-flex flex-col gap-[3px]">
-                                <span className="block h-[2px] w-[14px] rounded bg-dark-text-secondary"></span>
-                                <span className="block h-[2px] w-[14px] rounded bg-dark-text-secondary"></span>
-                                <span className="block h-[2px] w-[14px] rounded bg-dark-text-secondary"></span>
-                            </span>
-                            Exportar
-                        </button>
+                            <button
+                                type="button"
+                                className="flex h-7 w-7 items-center justify-center rounded-md border border-dark-border bg-white shadow-sm hover:shadow-md"
+                                onClick={handleExportClick}
+                                aria-label="Exportar heatmap"
+                            >
+                                <span className="inline-flex flex-col gap-[3px]">
+                                    <span className="block h-[2px] w-[14px] rounded bg-black/50"></span>
+                                    <span className="block h-[2px] w-[14px] rounded bg-black/50"></span>
+                                    <span className="block h-[2px] w-[14px] rounded bg-black/50"></span>
+                                </span>
+                            </button>
+                        </div>
                     </div>
                     <div
                         ref={viewportRef}
