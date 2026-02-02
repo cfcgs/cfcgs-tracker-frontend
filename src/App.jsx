@@ -432,12 +432,26 @@ function App() {
         };
 
         scheduleUpdate();
+        let retryTimer = null;
+        if (!stepNeedsNavigation && currentStep.selector && !document.querySelector(currentStep.selector)) {
+            let attempts = 0;
+            const retry = () => {
+                attempts += 1;
+                scheduleUpdate();
+                if (document.querySelector(currentStep.selector) || attempts >= 20) {
+                    return;
+                }
+                retryTimer = setTimeout(retry, 100);
+            };
+            retryTimer = setTimeout(retry, 100);
+        }
         window.addEventListener('resize', scheduleUpdate);
         window.addEventListener('scroll', scheduleUpdate, { passive: true });
         document.addEventListener('scroll', scheduleUpdate, true);
 
         return () => {
             if (rafId) cancelAnimationFrame(rafId);
+            if (retryTimer) clearTimeout(retryTimer);
             window.removeEventListener('resize', scheduleUpdate);
             window.removeEventListener('scroll', scheduleUpdate);
             document.removeEventListener('scroll', scheduleUpdate, true);

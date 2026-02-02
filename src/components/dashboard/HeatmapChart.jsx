@@ -240,6 +240,12 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
 
         return dataPoints;
     }, [cellMap, columnMeta, rowMeta, view]);
+    const hasData = rows.length > 0 && columns.length > 0;
+    const exportRows = hasData ? rows : [''];
+    const exportColumns = hasData ? columns : [''];
+    const exportPoints = hasData ? points : [];
+    const chartPixelHeight = Math.max(rows.length, 1) * ROW_HEIGHT;
+    const chartPixelWidth = Math.max(columns.length, 1) * CELL_WIDTH;
 
     const tooltipKey = tooltip
         ? `${tooltip.cell.year}-${tooltip.cell.country_id}-${objective}`
@@ -819,8 +825,8 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
             backgroundColor: 'transparent',
             margin: [0, 0, 0, 0],
             spacing: [0, 0, 0, 0],
-            height: rows.length * ROW_HEIGHT,
-            width: columns.length * CELL_WIDTH,
+            height: chartPixelHeight,
+            width: chartPixelWidth,
             animation: false,
             events: {
                 render() {},
@@ -828,16 +834,16 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
         },
         title: { text: null },
         xAxis: {
-            categories: columns,
+            categories: exportColumns,
             visible: false,
             min: 0,
-            max: columns.length - 1,
+            max: exportColumns.length - 1,
         },
         yAxis: {
-            categories: rows,
+            categories: exportRows,
             visible: false,
             min: 0,
-            max: rows.length - 1,
+            max: exportRows.length - 1,
             reversed: true,
         },
         colorAxis: {
@@ -883,7 +889,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
             },
         },
         series: [{
-            data: points,
+            data: exportPoints,
             colsize: 1,
             rowsize: 1,
             turboThreshold: 0,
@@ -948,11 +954,16 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
         rows,
         maxColorValue,
         points,
+        exportColumns,
+        exportRows,
+        exportPoints,
         handlePointOver,
         handlePointOut,
         handlePointClick,
         exportMarginTop,
         isCountryColumns,
+        chartPixelHeight,
+        chartPixelWidth,
     ]);
 
     const tooltipStyle = useMemo(() => {
@@ -1336,7 +1347,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                                     height: gridHeight,
                                 }}
                             >
-                                {rows.length > 0 && columns.length > 0 && (
+                                {(hasData || true) && (
                                     <div
                                         style={{
                                             position: 'absolute',
@@ -1347,8 +1358,8 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                                         <div
                                             className="relative"
                                             style={{
-                                                height: rows.length * ROW_HEIGHT,
-                                                width: columns.length * CELL_WIDTH,
+                                                height: chartPixelHeight,
+                                                width: chartPixelWidth,
                                             }}
                                         >
                                             <HighchartsReact
@@ -1357,41 +1368,43 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                                                 options={options}
                                                 containerProps={{
                                                     style: {
-                                                        height: rows.length * ROW_HEIGHT,
-                                                        width: columns.length * CELL_WIDTH,
+                                                        height: chartPixelHeight,
+                                                        width: chartPixelWidth,
                                                     },
                                                 }}
                                             />
-                                            <div className="absolute inset-0 z-10 pointer-events-none">
-                                                {points.map((point) => {
-                                                    const cell = point.custom;
-                                                    const left = point.x * CELL_WIDTH;
-                                                    const top = point.y * ROW_HEIGHT;
-                                                    const key = `${cell?.year ?? 'y'}-${cell?.country_id ?? 'c'}-${point.x}-${point.y}`;
-                                                    return (
-                                                        <div
-                                                            key={key}
-                                                            className="absolute pointer-events-auto"
-                                                            style={{
-                                                                left,
-                                                                top,
-                                                                width: CELL_WIDTH,
-                                                                height: ROW_HEIGHT,
-                                                            }}
-                                                            onMouseEnter={(event) => {
-                                                                const rect = event.currentTarget.getBoundingClientRect();
-                                                                handleCellOver(cell, getAnchorFromRect(rect));
-                                                            }}
-                                                            onMouseLeave={handlePointOut}
-                                                            onClick={(event) => {
-                                                                event.stopPropagation();
-                                                                const rect = event.currentTarget.getBoundingClientRect();
-                                                                handleCellClick(cell, getAnchorFromRect(rect), 'overlay');
-                                                            }}
-                                                        />
-                                                    );
-                                                })}
-                                            </div>
+                                            {hasData && (
+                                                <div className="absolute inset-0 z-10 pointer-events-none">
+                                                    {points.map((point) => {
+                                                        const cell = point.custom;
+                                                        const left = point.x * CELL_WIDTH;
+                                                        const top = point.y * ROW_HEIGHT;
+                                                        const key = `${cell?.year ?? 'y'}-${cell?.country_id ?? 'c'}-${point.x}-${point.y}`;
+                                                        return (
+                                                            <div
+                                                                key={key}
+                                                                className="absolute pointer-events-auto"
+                                                                style={{
+                                                                    left,
+                                                                    top,
+                                                                    width: CELL_WIDTH,
+                                                                    height: ROW_HEIGHT,
+                                                                }}
+                                                                onMouseEnter={(event) => {
+                                                                    const rect = event.currentTarget.getBoundingClientRect();
+                                                                    handleCellOver(cell, getAnchorFromRect(rect));
+                                                                }}
+                                                                onMouseLeave={handlePointOut}
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    const rect = event.currentTarget.getBoundingClientRect();
+                                                                    handleCellClick(cell, getAnchorFromRect(rect), 'overlay');
+                                                                }}
+                                                            />
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
