@@ -81,7 +81,7 @@ function App() {
             selector: '[data-tour="heatmap-export"]',
             focusSelector: '[data-tour="heatmap-chart"]',
             title: 'Exportar Heatmap',
-            text: 'Clique em “Exportar” para salvar o heatmap.',
+            text: 'Clique em “Exportar” para salvar o heatmap. É necessário ter algum dado carregado no gráfico.',
             image: EcoBotExplicando,
             placement: 'left',
             completion: { type: 'event', eventName: 'tour:export-heatmap' },
