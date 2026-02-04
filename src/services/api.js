@@ -82,6 +82,27 @@ export const getAvailableYears = async () => {
   return response.data || [];
 };
 
+export const getHeatmapFilterOptions = async (filters = {}) => {
+  const params = {};
+  if (filters.years?.length) {
+    params.year = filters.years;
+  }
+  if (filters.countryIds?.length) {
+    params.country_id = filters.countryIds;
+  }
+  if (filters.projectIds?.length) {
+    params.project_id = filters.projectIds;
+  }
+  if (filters.objective && filters.objective !== "all") {
+    params.objective = filters.objective;
+  }
+  const response = await axios.get(`${API_BASE_URL}/commitments/heatmap_filters`, {
+    params,
+    paramsSerializer,
+  });
+  return response.data || { years: [], countries: [], projects: [], objectives: [] };
+};
+
 
 export const askChatbot = async ({
   question,
@@ -225,7 +246,7 @@ export const getKpisData = async () => {
     }
 };
 
-export const loadPaginatedProjects = async (search, loadedOptions, { page }) => {
+export const loadPaginatedProjects = async (search, loadedOptions, { page, filters } = {}) => {
   try {
     const limit = 20;
     const offset = page * limit;
@@ -235,10 +256,19 @@ export const loadPaginatedProjects = async (search, loadedOptions, { page }) => 
       limit: limit,
       offset: offset,
     };
+    if (filters?.years?.length) {
+      params.year = filters.years;
+    }
+    if (filters?.countryIds?.length) {
+      params.country_id = filters.countryIds;
+    }
+    if (filters?.objective && filters.objective !== "all") {
+      params.objective = filters.objective;
+    }
 
     const response = await axios.get(
       `${API_BASE_URL}/projects/commitments/paginated`,
-      { params }
+      { params, paramsSerializer }
     );
 
     const data = response.data;

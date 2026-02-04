@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import Select from 'react-select';
 
 // Estilos customizados para o react-select (pode ser movido para um arquivo separado)
@@ -20,6 +20,23 @@ const BubbleChartFilters = ({
   onTypeChange,
   onFocusChange
 }) => {
+  const menuInteractionRef = useRef({});
+  const markMenuOpen = (key) => () => {
+    menuInteractionRef.current[key] = true;
+  };
+  const markMenuClose = (key) => () => {
+    if (!menuInteractionRef.current[key]) return;
+    menuInteractionRef.current[key] = false;
+    if (typeof document !== 'undefined') {
+      document.dispatchEvent(new CustomEvent('tour:filter-change', {
+        detail: {
+          stepId: 'bubble-filters',
+          filter: key,
+          filled: true,
+        },
+      }));
+    }
+  };
   // Transforma os dados para o formato que o react-select espera: { value, label }
   const typeOptions = fundTypes.map(type => ({ value: type.id, label: type.name }));
   const focusOptions = fundFocuses.map(focus => ({ value: focus.id, label: focus.name }));
@@ -44,6 +61,8 @@ const BubbleChartFilters = ({
                 }));
               }
             }}
+            onMenuOpen={markMenuOpen('types')}
+            onMenuClose={markMenuClose('types')}
             styles={selectStyles}
             placeholder="Todos os Tipos"
         />
@@ -66,6 +85,8 @@ const BubbleChartFilters = ({
                 }));
               }
             }}
+            onMenuOpen={markMenuOpen('focuses')}
+            onMenuClose={markMenuClose('focuses')}
             styles={selectStyles}
             placeholder="Todos os Focos"
         />
