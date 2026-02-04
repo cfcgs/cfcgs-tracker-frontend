@@ -1,5 +1,5 @@
 // src/components/Dashboard/Filters.jsx
-import React from 'react';
+import React, { useRef } from 'react';
 import Select from 'react-select';
 
 // Estilos customizados para o react-select combinar com o tema escuro
@@ -39,6 +39,23 @@ const selectStyles = {
 };
 
 const Filters = ({ years, countries, selectedYears, selectedCountries, onYearChange, onCountryChange }) => {
+    const menuInteractionRef = useRef({});
+    const markMenuOpen = (key) => () => {
+        menuInteractionRef.current[key] = true;
+    };
+    const markMenuClose = (key) => () => {
+        if (!menuInteractionRef.current[key]) return;
+        menuInteractionRef.current[key] = false;
+        if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                detail: {
+                    stepId: 'commitments-filters',
+                    filter: key,
+                    filled: true,
+                },
+            }));
+        }
+    };
     const yearOptions = years.map(year => ({ value: year, label: year }));
     const countryOptions = countries.map(country => ({ value: country, label: country }));
 
@@ -51,7 +68,7 @@ const Filters = ({ years, countries, selectedYears, selectedCountries, onYearCha
                     options={yearOptions}
                     value={yearOptions.filter(opt => selectedYears.includes(opt.value))}
                     onChange={selected => {
-                        onYearChange(selected.map(opt => opt.value));
+                        onYearChange(selected ? selected.map(opt => opt.value) : []);
                         if (typeof document !== 'undefined') {
                             document.dispatchEvent(new CustomEvent('tour:filter-change', {
                                 detail: {
@@ -62,6 +79,8 @@ const Filters = ({ years, countries, selectedYears, selectedCountries, onYearCha
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('years')}
+                    onMenuClose={markMenuClose('years')}
                     styles={selectStyles}
                     placeholder="Todos os anos"
                 />
@@ -73,7 +92,7 @@ const Filters = ({ years, countries, selectedYears, selectedCountries, onYearCha
                     options={countryOptions}
                     value={countryOptions.filter(opt => selectedCountries.includes(opt.value))}
                     onChange={selected => {
-                        onCountryChange(selected.map(opt => opt.value));
+                        onCountryChange(selected ? selected.map(opt => opt.value) : []);
                         if (typeof document !== 'undefined') {
                             document.dispatchEvent(new CustomEvent('tour:filter-change', {
                                 detail: {
@@ -84,6 +103,8 @@ const Filters = ({ years, countries, selectedYears, selectedCountries, onYearCha
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('countries')}
+                    onMenuClose={markMenuClose('countries')}
                     styles={selectStyles}
                     placeholder="Selecione um ou mais países..."
                 />

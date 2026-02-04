@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import Select from 'react-select';
 
 // Reutiliza os mesmos estilos
@@ -23,6 +23,23 @@ const BarChartFilters = ({
     onFocusChange,
     onFundChange
 }) => {
+    const menuInteractionRef = useRef({});
+    const markMenuOpen = (key) => () => {
+        menuInteractionRef.current[key] = true;
+    };
+    const markMenuClose = (key) => () => {
+        if (!menuInteractionRef.current[key]) return;
+        menuInteractionRef.current[key] = false;
+        if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                detail: {
+                    stepId: 'status-filters',
+                    filter: key,
+                    filled: true,
+                },
+            }));
+        }
+    };
     const fundOptions = allFunds.map(fund => ({ value: fund.id, label: fund.fund_name }));
     const typeOptions = allFundTypes.map(type => ({ value: type.id, label: type.name }));
     const focusOptions = allFundFocuses.map(focus => ({ value: focus.id, label: focus.name }));
@@ -47,6 +64,8 @@ const BarChartFilters = ({
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('funds')}
+                    onMenuClose={markMenuClose('funds')}
                     styles={selectStyles}
                     placeholder="Todos os Fundos"
                 />
@@ -69,6 +88,8 @@ const BarChartFilters = ({
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('types')}
+                    onMenuClose={markMenuClose('types')}
                     styles={selectStyles}
                     placeholder="Todos os Tipos"
                 />
@@ -91,6 +112,8 @@ const BarChartFilters = ({
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('focuses')}
+                    onMenuClose={markMenuClose('focuses')}
                     styles={selectStyles}
                     placeholder="Todos os Focos"
                 />

@@ -1,5 +1,5 @@
 // src/components/dashboard/HeatmapFilters.jsx
-import React from 'react';
+import React, { useMemo, useRef } from 'react';
 import Select from 'react-select';
 import { AsyncPaginate } from 'react-select-async-paginate';
 import { loadPaginatedProjects } from '../../services/api';
@@ -22,7 +22,11 @@ const selectStyles = {
     menu: (provided) => ({
         ...provided,
         backgroundColor: '#161B22', // dark-card
-        zIndex: 50 // Ensure menu is above chart
+        zIndex: 50
+    }),
+    menuPortal: (provided) => ({
+        ...provided,
+        zIndex: 9999,
     }),
     option: (provided, state) => ({
         ...provided,
@@ -70,6 +74,7 @@ const HeatmapFilters = ({
     selectedProjectIds,
     selectedObjective,
     selectedView,
+    availableObjectives,
     onYearChange,
     onCountryChange,
     onProjectChange,
@@ -87,6 +92,13 @@ const HeatmapFilters = ({
         { value: 'mitigation', label: 'Mitigação' },
         { value: 'both', label: 'Ambos' },
     ];
+    const filteredObjectiveOptions = useMemo(() => {
+        if (!availableObjectives || availableObjectives.length === 0) {
+            return objectiveOptions;
+        }
+        const set = new Set(availableObjectives);
+        return objectiveOptions.filter((opt) => opt.value === 'all' || set.has(opt.value));
+    }, [availableObjectives, objectiveOptions]);
 
     const viewOptions = [
         { value: 'country_year', label: 'Linhas: Países | Colunas: Anos' },
@@ -98,6 +110,24 @@ const HeatmapFilters = ({
     const getSelectedOption = (options, value) => options.find(opt => opt.value === value) || null;
     // getSelectedOptions (para multi-select)
     const getSelectedOptions = (options, values) => options.filter(opt => values.includes(opt.value));
+    const menuInteractionRef = useRef({});
+    const markMenuOpen = (key) => () => {
+        menuInteractionRef.current[key] = true;
+    };
+    const markMenuClose = (key) => () => {
+        if (!menuInteractionRef.current[key]) return;
+        menuInteractionRef.current[key] = false;
+        if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                detail: {
+                    stepId: 'heatmap-filters',
+                    filter: key,
+                    filled: true,
+                },
+            }));
+        }
+    };
+
     const handleProjectChange = (selectedOptions) => {
         onProjectChange(selectedOptions ? selectedOptions.map(opt => opt.value) : []);
         if (typeof document !== 'undefined') {
@@ -114,6 +144,11 @@ const HeatmapFilters = ({
     const selectedProjectObjects = selectedProjectIds.map(id => {
          return { value: id, label: `Projeto ID: ${id}` };
     });
+    const projectFilterMeta = useMemo(() => ({
+        years: selectedYears,
+        countryIds: selectedCountryIds,
+        objective: selectedObjective,
+    }), [selectedCountryIds, selectedObjective, selectedYears]);
 
     return (
         <div
@@ -140,6 +175,9 @@ const HeatmapFilters = ({
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('years')}
+                    onMenuClose={markMenuClose('years')}
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                     styles={selectStyles}
                     placeholder="Todos os Anos"
                     closeMenuOnSelect={false}
@@ -165,6 +203,9 @@ const HeatmapFilters = ({
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('countries')}
+                    onMenuClose={markMenuClose('countries')}
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                     styles={selectStyles}
                     placeholder="Todos os Países"
                     closeMenuOnSelect={false}
@@ -177,13 +218,22 @@ const HeatmapFilters = ({
                  <AsyncPaginate
                     isMulti
                     value={selectedProjectObjects}
-                    loadOptions={loadPaginatedProjects}
+                    loadOptions={(search, loadedOptions, additional) =>
+                        loadPaginatedProjects(search, loadedOptions, {
+                            ...additional,
+                            filters: projectFilterMeta,
+                        })
+                    }
                     onChange={handleProjectChange}
+                    onMenuOpen={markMenuOpen('projects')}
+                    onMenuClose={markMenuClose('projects')}
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                     styles={selectStyles}
                     placeholder="Buscar e selecionar projetos..."
                     closeMenuOnSelect={false}
                     debounceTimeout={300}
-                    additional={{ page: 0 }}
+                    additional={{ page: 0, filters: projectFilterMeta }}
+                    cacheUniqs={[selectedYears.join(','), selectedCountryIds.join(','), selectedObjective]}
                     loadingMessage={() => 'Carregando mais projetos...'}
                  />
             </div>
@@ -192,8 +242,8 @@ const HeatmapFilters = ({
             <div className="flex-grow min-w-[150px]">
                 <label className="block text-sm font-medium text-dark-text-secondary mb-1">Objetivo</label>
                 <Select
-                    options={objectiveOptions}
-                    value={getSelectedOption(objectiveOptions, selectedObjective)}
+                    options={filteredObjectiveOptions}
+                    value={getSelectedOption(filteredObjectiveOptions, selectedObjective)}
                     onChange={(selectedOption) => {
                         onObjectiveChange(selectedOption ? selectedOption.value : 'all');
                         if (typeof document !== 'undefined') {
@@ -206,6 +256,9 @@ const HeatmapFilters = ({
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('objective')}
+                    onMenuClose={markMenuClose('objective')}
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                     styles={selectStyles}
                     placeholder="Todos Objetivos"
                 />
@@ -229,6 +282,9 @@ const HeatmapFilters = ({
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('view')}
+                    onMenuClose={markMenuClose('view')}
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                     styles={selectStyles}
                     placeholder="Selecionar Visão"
                 />

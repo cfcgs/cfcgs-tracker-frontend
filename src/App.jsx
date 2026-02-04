@@ -36,10 +36,13 @@ function App() {
     const [tourStepIndex, setTourStepIndex] = useState(0);
     const [tourTarget, setTourTarget] = useState(null);
     const [focusRect, setFocusRect] = useState(null);
+    const [highlightRects, setHighlightRects] = useState([]);
     const [tourCompleted, setTourCompleted] = useState(false);
     const [stepCompleted, setStepCompleted] = useState(false);
     const [interactionMode, setInteractionMode] = useState(false);
     const [filterProgress, setFilterProgress] = useState({});
+    const [resumeHint, setResumeHint] = useState(false);
+    const [resumeHintRect, setResumeHintRect] = useState(null);
     const mainRef = useRef(null);
 
     useEffect(() => {
@@ -69,7 +72,7 @@ function App() {
             selector: '[data-tour="heatmap-filters"]',
             focusSelector: '[data-tour="heatmap-chart"]',
             title: 'Filtros do Heatmap',
-            text: 'Use todos os filtros (anos, países, projetos, objetivo e visualização) para explorar os dados.',
+            text: 'O heatmap mostra valores por país receptor x ano. Use todos os filtros (anos, países, projetos e objetivo) e também os tipos de visualização. Passe o mouse nas células para ver detalhes e clique em “Projetos” no card para ver a lista de projetos e valores.',
             image: EcoBotExplicando,
             placement: 'bottom',
             completion: { type: 'filters', required: ['years', 'countries', 'projects', 'objective', 'view'] },
@@ -81,7 +84,7 @@ function App() {
             selector: '[data-tour="heatmap-export"]',
             focusSelector: '[data-tour="heatmap-chart"]',
             title: 'Exportar Heatmap',
-            text: 'Clique em “Exportar” para salvar o heatmap. É necessário ter algum dado carregado no gráfico.',
+            text: 'Use o menu de exportação para baixar o heatmap no formato desejado.',
             image: EcoBotExplicando,
             placement: 'left',
             completion: { type: 'event', eventName: 'tour:export-heatmap' },
@@ -93,9 +96,9 @@ function App() {
             selector: '[data-tour="bubble-chart"]',
             focusSelector: '[data-tour="bubble-chart"]',
             title: 'Gráfico de Bolhas',
-            text: 'Interaja com o gráfico e observe os pontos destacados.',
+            text: 'Cada bolha representa um fundo: posição e tamanho mostram volume de recursos. Passe o mouse sobre uma bolha para ver os detalhes do fundo.',
             image: EcoBotExplicando,
-            placement: 'right',
+            placement: 'bottom',
             completion: { type: 'event', eventName: 'tour:bubble-tooltip' },
         },
         {
@@ -105,22 +108,10 @@ function App() {
             selector: '[data-tour="bubble-filters"]',
             focusSelector: '[data-tour="bubble-chart"]',
             title: 'Filtros de Fundos',
-            text: 'Selecione ao menos um Tipo e um Foco de fundo.',
+            text: 'Selecione ao menos um Tipo e um Foco de fundo para refinar as bolhas.',
             image: EcoBotExplicando,
             placement: 'bottom',
             completion: { type: 'filters', required: ['types', 'focuses'] },
-        },
-        {
-            id: 'bubble-export',
-            phase: 1,
-            view: 'dashboard',
-            selector: '[data-tour="bubble-export"]',
-            focusSelector: '[data-tour="bubble-chart"]',
-            title: 'Exportar Bubble',
-            text: 'Use o botão de exportação do gráfico de bolhas.',
-            image: EcoBotExplicando,
-            placement: 'left',
-            completion: { type: 'event', eventName: 'tour:export-bubble' },
         },
         {
             id: 'status-filters',
@@ -129,22 +120,10 @@ function App() {
             selector: '[data-tour="status-filters"]',
             focusSelector: '[data-tour="status-chart"]',
             title: 'Filtros de Status',
-            text: 'Selecione Fundos, Tipos e Focos para o Status Financeiro Agregado.',
+            text: 'Este gráfico compara Promessas, Depósitos e Aprovações. Use os filtros para comparar diferentes grupos de fundos.',
             image: EcoBotExplicando,
             placement: 'bottom',
             completion: { type: 'filters', required: ['funds', 'types', 'focuses'] },
-        },
-        {
-            id: 'status-export',
-            phase: 1,
-            view: 'dashboard',
-            selector: '[data-tour="status-export"]',
-            focusSelector: '[data-tour="status-chart"]',
-            title: 'Exportar Status',
-            text: 'Use o botão de exportação deste gráfico.',
-            image: EcoBotExplicando,
-            placement: 'left',
-            completion: { type: 'event', eventName: 'tour:export-status' },
         },
         {
             id: 'objective-filters',
@@ -153,22 +132,10 @@ function App() {
             selector: '[data-tour="objective-filters"]',
             focusSelector: '[data-tour="objective-chart"]',
             title: 'Filtros por Objetivo',
-            text: 'Defina anos, países e objetivos climáticos.',
+            text: 'Este gráfico mostra a distribuição por objetivo climático ao longo do tempo. Defina anos, países e objetivos para comparar tendências.',
             image: EcoBotExplicando,
             placement: 'bottom',
             completion: { type: 'filters', required: ['years', 'countries', 'objectives'] },
-        },
-        {
-            id: 'objective-export',
-            phase: 1,
-            view: 'dashboard',
-            selector: '[data-tour="objective-export"]',
-            focusSelector: '[data-tour="objective-chart"]',
-            title: 'Exportar Objetivos',
-            text: 'Use o botão de exportação do gráfico de objetivos.',
-            image: EcoBotExplicando,
-            placement: 'left',
-            completion: { type: 'event', eventName: 'tour:export-objective' },
         },
         {
             id: 'commitments-filters',
@@ -177,22 +144,10 @@ function App() {
             selector: '[data-tour="commitments-filters"]',
             focusSelector: '[data-tour="commitments-chart"]',
             title: 'Filtros por País',
-            text: 'Escolha anos e países receptores.',
+            text: 'Aqui você vê a evolução do financiamento por país receptor. Escolha anos e países para acompanhar a série histórica.',
             image: EcoBotExplicando,
             placement: 'bottom',
             completion: { type: 'filters', required: ['years', 'countries'] },
-        },
-        {
-            id: 'commitments-export',
-            phase: 1,
-            view: 'dashboard',
-            selector: '[data-tour="commitments-export"]',
-            focusSelector: '[data-tour="commitments-chart"]',
-            title: 'Exportar Evolução',
-            text: 'Use o botão de exportação deste gráfico.',
-            image: EcoBotExplicando,
-            placement: 'left',
-            completion: { type: 'event', eventName: 'tour:export-commitments' },
         },
         {
             id: 'chatbot',
@@ -210,12 +165,12 @@ function App() {
             id: 'datagrid',
             phase: 2,
             view: 'datagrid',
-            selector: '[data-tour="datagrid-download"]',
+            selector: '[data-tour="nav-datagrid"]',
             focusSelector: '[data-tour="datagrid-download"]',
             title: 'Tabelas Completas',
-            text: 'Acesse esta página e faça o download de uma tabela.',
+            text: 'Nesta página há tabelas completas. Baixe uma delas clicando em um dos botões “Baixar CSV Completo”.',
             image: EcoBotExplicando,
-            placement: 'left',
+            placement: 'right',
             completion: { type: 'click', selector: '[data-tour="datagrid-download"]' },
         },
         {
@@ -257,14 +212,37 @@ function App() {
         [],
     );
     const stepNeedsNavigation = Boolean(currentStep?.view && currentStep.view !== activeView);
+    const resolvedStep = useMemo(() => {
+        if (!currentStep) return null;
+        if (stepNeedsNavigation) {
+            const navSelector = navSelectorByView[currentStep.view];
+            return {
+                ...currentStep,
+                selector: navSelector,
+                focusSelector: navSelector,
+                title: 'Ir para a página',
+                text: `No menu lateral à esquerda, clique em ${VIEW_LABELS[currentStep.view] || currentStep.view} para continuar.`,
+                placement: 'right',
+            };
+        }
+        if (currentStep.id === 'datagrid') {
+            return {
+                ...currentStep,
+                selector: '[data-tour="datagrid-download"]',
+                focusSelector: '[data-tour="datagrid-download"]',
+                placement: 'right',
+            };
+        }
+        return currentStep;
+    }, [currentStep, stepNeedsNavigation, navSelectorByView]);
     const requiresCompletion = Boolean(
         currentStep?.completion && currentStep.completion.type !== 'none'
     );
     const canAdvanceStep = !stepNeedsNavigation && (!requiresCompletion || stepCompleted);
 
     useEffect(() => {
-        if (!currentStep || stepNeedsNavigation || !currentStep.selector) return;
-        const element = document.querySelector(currentStep.selector);
+        if (!resolvedStep || !resolvedStep.selector) return;
+        const element = document.querySelector(resolvedStep.selector);
         if (!element) return;
         const timer = setTimeout(() => {
             element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
@@ -272,7 +250,7 @@ function App() {
         return () => {
             clearTimeout(timer);
         };
-    }, [currentStep, stepNeedsNavigation]);
+    }, [resolvedStep]);
 
     useEffect(() => {
         if (!currentStep) return;
@@ -361,9 +339,10 @@ function App() {
     }, [currentStep, requiresCompletion, stepNeedsNavigation]);
 
     useEffect(() => {
-        if (!currentStep) {
+        if (!resolvedStep) {
             setTourTarget(null);
             setFocusRect(null);
+            setHighlightRects([]);
             return;
         }
 
@@ -374,30 +353,59 @@ function App() {
                 if (!navElement) {
                     setTourTarget(null);
                     setFocusRect(null);
+                    setHighlightRects([]);
                     return;
                 }
                 const navRect = navElement.getBoundingClientRect();
                 setTourTarget(navRect);
                 setFocusRect(navRect);
+                setHighlightRects([navRect]);
                 return;
             }
 
-            if (!currentStep.selector) {
+            if (!resolvedStep.selector) {
                 setTourTarget(null);
                 setFocusRect(null);
+                setHighlightRects([]);
                 return;
             }
-            const element = document.querySelector(currentStep.selector);
-            if (!element) {
+            const elements = Array.from(document.querySelectorAll(resolvedStep.selector));
+            if (!elements.length) {
+                if (currentStep?.id === 'datagrid') {
+                    const navElement = document.querySelector(navSelectorByView.datagrid);
+                    if (navElement) {
+                        const navRect = navElement.getBoundingClientRect();
+                        setTourTarget(navRect);
+                        setFocusRect(navRect);
+                        setHighlightRects([navRect]);
+                        return;
+                    }
+                }
                 setTourTarget(null);
                 setFocusRect(null);
+                setHighlightRects([]);
                 return;
             }
-            const rect = element.getBoundingClientRect();
-            const focusElement = currentStep.focusSelector
-                ? document.querySelector(currentStep.focusSelector)
-                : element?.closest('[data-tour$="-chart"]') || element;
-            const focusRectNext = focusElement ? focusElement.getBoundingClientRect() : rect;
+            const anchorRect = elements[0].getBoundingClientRect();
+            const rect = {
+                top: anchorRect.top,
+                left: anchorRect.left,
+                width: anchorRect.width,
+                height: anchorRect.height,
+            };
+
+            const focusElements = resolvedStep.focusSelector
+                ? Array.from(document.querySelectorAll(resolvedStep.focusSelector))
+                : elements;
+            const focusAnchor = focusElements[0]?.getBoundingClientRect();
+            const focusRectNext = focusAnchor
+                ? {
+                      top: focusAnchor.top,
+                      left: focusAnchor.left,
+                      width: focusAnchor.width,
+                      height: focusAnchor.height,
+                  }
+                : rect;
 
             setTourTarget((prev) => {
                 if (!prev) return rect;
@@ -411,6 +419,9 @@ function App() {
                 }
                 return rect;
             });
+            setHighlightRects(
+                elements.map((el) => el.getBoundingClientRect())
+            );
 
             setFocusRect((prev) => {
                 if (!prev) return focusRectNext;
@@ -432,38 +443,27 @@ function App() {
         };
 
         scheduleUpdate();
-        let retryTimer = null;
-        if (!stepNeedsNavigation && currentStep.selector && !document.querySelector(currentStep.selector)) {
-            let attempts = 0;
-            const retry = () => {
-                attempts += 1;
-                scheduleUpdate();
-                if (document.querySelector(currentStep.selector) || attempts >= 20) {
-                    return;
-                }
-                retryTimer = setTimeout(retry, 100);
-            };
-            retryTimer = setTimeout(retry, 100);
-        }
         window.addEventListener('resize', scheduleUpdate);
         window.addEventListener('scroll', scheduleUpdate, { passive: true });
         document.addEventListener('scroll', scheduleUpdate, true);
 
         return () => {
             if (rafId) cancelAnimationFrame(rafId);
-            if (retryTimer) clearTimeout(retryTimer);
             window.removeEventListener('resize', scheduleUpdate);
             window.removeEventListener('scroll', scheduleUpdate);
             document.removeEventListener('scroll', scheduleUpdate, true);
         };
-    }, [currentStep?.id, stepNeedsNavigation]);
+    }, [resolvedStep?.id, stepNeedsNavigation, navSelectorByView, currentStep?.view]);
 
     const showTourPopup = Boolean(
-        currentStep &&
+        resolvedStep &&
         tourActive &&
         tourVisible &&
         !interactionMode &&
-        (!currentStep.selector || stepNeedsNavigation || tourTarget)
+        (!resolvedStep.selector || stepNeedsNavigation || tourTarget)
+    );
+    const isLastStepInPhase = Boolean(
+        currentStep && tourStepIndex >= phaseSteps.length - 1
     );
     const shouldBlockInteractions = Boolean(
         tourActive &&
@@ -474,7 +474,7 @@ function App() {
     );
 
     const bubbleStyle = useMemo(() => {
-        if (!currentStep || stepNeedsNavigation || !tourTarget) {
+        if (!resolvedStep || !tourTarget) {
             return {
                 top: '18%',
                 left: '50%',
@@ -516,7 +516,10 @@ function App() {
             },
         };
 
-        let placement = placements[currentStep.placement] || placements.right;
+        let placement = placements[resolvedStep.placement] || placements.right;
+        if (stepNeedsNavigation) {
+            placement = placements.right;
+        }
         if (placement === placements.right && rect.right + offset + maxWidth > viewportWidth) {
             placement = placements.left;
         }
@@ -532,13 +535,14 @@ function App() {
         const left = Math.min(Math.max(12, placement.left), viewportWidth - maxWidth - 12);
         const top = Math.min(Math.max(12, placement.top), viewportHeight - maxHeight - 12);
         return { ...placement, left, top };
-    }, [currentStep, stepNeedsNavigation, tourTarget]);
+    }, [resolvedStep, stepNeedsNavigation, tourTarget]);
 
     const startTour = useCallback(() => {
         setTourActive(true);
         setTourVisible(true);
         setTourPhase(0);
         setTourStepIndex(0);
+        setResumeHint(false);
     }, []);
 
     const toggleTour = useCallback(() => {
@@ -547,6 +551,7 @@ function App() {
             return;
         }
         setTourVisible((prev) => !prev);
+        setResumeHint(false);
     }, [tourActive, startTour]);
 
     const handleTourPrev = useCallback(() => {
@@ -571,6 +576,7 @@ function App() {
             setTourVisible(false);
             setTourPhase((prev) => prev + 1);
             setTourStepIndex(0);
+            setResumeHint(true);
         }
     }, [currentStep, phaseSteps.length, tourPhase, totalPhases, tourStepIndex]);
 
@@ -622,6 +628,23 @@ function App() {
 
     const focusBlockers = useMemo(() => [], []);
 
+    useEffect(() => {
+        if (!resumeHint) {
+            setResumeHintRect(null);
+            return undefined;
+        }
+        const element = document.querySelector('[data-tour="tutorial-toggle"]');
+        if (!element) {
+            return undefined;
+        }
+        const rect = element.getBoundingClientRect();
+        setResumeHintRect(rect);
+        const timer = setTimeout(() => {
+            setResumeHint(false);
+        }, 2500);
+        return () => clearTimeout(timer);
+    }, [resumeHint]);
+
     return (
         <div className="relative flex min-h-screen bg-dark-bg text-dark-text">
             <SideNav
@@ -632,6 +655,7 @@ function App() {
                         <button
                             type="button"
                             onClick={toggleTour}
+                            data-tour="tutorial-toggle"
                             className="w-full flex items-center justify-center gap-2 rounded-full border border-accent-blue/40 bg-dark-card/90 px-4 py-3 text-sm font-semibold text-accent-blue shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-dark-card"
                         >
                             {tutorialButtonIcon}
@@ -659,28 +683,29 @@ function App() {
                 </button>
             )}
 
-            {showTourPopup && (
+            {showTourPopup && resolvedStep && (
                 <>
-                    {tourTarget && (
+                    {highlightRects.map((rect, index) => (
                         <div
+                            key={`highlight-${index}`}
                             className="fixed z-[60] rounded-2xl border-2 border-accent-blue/80 shadow-[0_0_24px_rgba(88,166,255,0.45)] pointer-events-none"
                             style={{
-                                top: Math.max(tourTarget.top - 8, 0),
-                                left: Math.max(tourTarget.left - 8, 0),
-                                width: tourTarget.width + 16,
-                                height: tourTarget.height + 16,
+                                top: Math.max(rect.top - 8, 0),
+                                left: Math.max(rect.left - 8, 0),
+                                width: rect.width + 16,
+                                height: rect.height + 16,
                                 transition: 'none',
                             }}
                         />
-                    )}
+                    ))}
                     <div
-                        key={currentStep.id}
+                        key={resolvedStep.id}
                         className="fixed z-[75] w-[440px] max-w-[92vw] rounded-2xl border border-dark-border bg-dark-card/95 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.55)] animate-tour-drop"
                         style={{ ...bubbleStyle }}
                     >
                         <div className="flex items-start gap-4">
                             <img
-                                src={currentStep.image}
+                                src={resolvedStep.image}
                                 alt="EcoBot"
                                 className="h-32 w-32 flex-shrink-0"
                             />
@@ -688,8 +713,8 @@ function App() {
                                 <div className="text-xs uppercase tracking-[0.16em] text-accent-blue">
                                     Etapa {tourPhase + 1} de {totalPhases} · Passo {tourStepIndex + 1} de {phaseSteps.length}
                                 </div>
-                                <h4 className="mt-1 text-base font-semibold text-dark-text">{currentStep.title}</h4>
-                                <p className="mt-2 text-sm text-dark-text-secondary">{currentStep.text}</p>
+                                <h4 className="mt-1 text-base font-semibold text-dark-text">{resolvedStep.title}</h4>
+                                <p className="mt-2 text-sm text-dark-text-secondary">{resolvedStep.text}</p>
                                 {requiresCompletion && stepCompleted && !stepNeedsNavigation && (
                                     <div className="mt-3 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-xs text-green-200">
                                         Muito bem! Você concluiu a tarefa. Clique em “Próximo” para continuar.
@@ -697,7 +722,12 @@ function App() {
                                 )}
                                 {stepNeedsNavigation && (
                                     <div className="mt-3 rounded-lg border border-accent-blue/30 bg-accent-blue/10 px-3 py-2 text-xs text-accent-blue">
-                                        Use a barra lateral para ir para <strong>{VIEW_LABELS[currentStep.view] || currentStep.view}</strong> e continuar.
+                                        Use o menu lateral à esquerda para ir para <strong>{VIEW_LABELS[currentStep.view] || currentStep.view}</strong> e continuar.
+                                    </div>
+                                )}
+                                {isLastStepInPhase && stepCompleted && !stepNeedsNavigation && tourPhase < totalPhases - 1 && (
+                                    <div className="mt-3 rounded-lg border border-dark-border/60 bg-dark-card/60 px-3 py-2 text-xs text-dark-text-secondary">
+                                        Ao concluir esta etapa, clique em <strong>Retomar tutorial</strong> para continuar.
                                     </div>
                                 )}
                             </div>
@@ -759,6 +789,29 @@ function App() {
 
             {shouldBlockInteractions && (
                 <div className="fixed inset-0 z-[70] pointer-events-auto bg-transparent" />
+            )}
+
+            {resumeHint && resumeHintRect && (
+                <>
+                    <div
+                        className="fixed z-[80] rounded-2xl border-2 border-accent-blue/80 shadow-[0_0_20px_rgba(88,166,255,0.45)] pointer-events-none"
+                        style={{
+                            top: Math.max(resumeHintRect.top - 8, 0),
+                            left: Math.max(resumeHintRect.left - 8, 0),
+                            width: resumeHintRect.width + 16,
+                            height: resumeHintRect.height + 16,
+                        }}
+                    />
+                    <div
+                        className="fixed z-[80] rounded-xl border border-dark-border bg-dark-card/95 px-3 py-2 text-xs text-dark-text-secondary shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+                        style={{
+                            top: Math.max(resumeHintRect.top - 46, 12),
+                            left: Math.min(resumeHintRect.left, window.innerWidth - 240),
+                        }}
+                    >
+                        Clique em <strong>Retomar tutorial</strong> para seguir.
+                    </div>
+                </>
             )}
         </div>
     );

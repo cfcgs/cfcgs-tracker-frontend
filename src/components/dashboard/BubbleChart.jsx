@@ -129,7 +129,7 @@ const BubbleChart = ({ fundsData }) => {
         },
         point: {
           events: {
-            mouseOver() {
+            mouseOut() {
               document.dispatchEvent(new CustomEvent('tour:bubble-tooltip'));
             }
           }

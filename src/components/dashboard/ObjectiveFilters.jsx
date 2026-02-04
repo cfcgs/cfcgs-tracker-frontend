@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import Select from 'react-select';
 
 // Estilos customizados para o react-select (pode ser movido para um arquivo separado)
@@ -13,6 +13,23 @@ const selectStyles = {
 };
 
 const ObjectiveFilters = ({ years, countries, objectives, selectedYears, selectedCountries, selectedObjectives, onYearChange, onCountryChange, onObjectiveChange }) => {
+    const menuInteractionRef = useRef({});
+    const markMenuOpen = (key) => () => {
+        menuInteractionRef.current[key] = true;
+    };
+    const markMenuClose = (key) => () => {
+        if (!menuInteractionRef.current[key]) return;
+        menuInteractionRef.current[key] = false;
+        if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                detail: {
+                    stepId: 'objective-filters',
+                    filter: key,
+                    filled: true,
+                },
+            }));
+        }
+    };
     const yearOptions = years.map(year => ({ value: year, label: year }));
     const countryOptions = countries.map(country => ({ value: country.id, label: country.name }));
     const objectiveOptions = objectives.map(obj => ({ value: obj, label: obj }));
@@ -38,6 +55,8 @@ const ObjectiveFilters = ({ years, countries, objectives, selectedYears, selecte
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('years')}
+                    onMenuClose={markMenuClose('years')}
                     styles={selectStyles}
                     placeholder="Todos os Anos"
                 />
@@ -61,6 +80,8 @@ const ObjectiveFilters = ({ years, countries, objectives, selectedYears, selecte
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('countries')}
+                    onMenuClose={markMenuClose('countries')}
                     styles={selectStyles}
                     placeholder="Todos os Países"
                 />
@@ -84,6 +105,8 @@ const ObjectiveFilters = ({ years, countries, objectives, selectedYears, selecte
                             }));
                         }
                     }}
+                    onMenuOpen={markMenuOpen('objectives')}
+                    onMenuClose={markMenuClose('objectives')}
                     styles={selectStyles}
                     placeholder="Todos os Objetivos"
                 />

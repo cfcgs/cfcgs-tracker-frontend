@@ -43,6 +43,7 @@ const CommitmentCard = ({ year }) => {
                 <button 
                     onClick={exportToCsv}
                     className="bg-accent-blue text-white px-3 py-1 rounded-md flex items-center gap-2 hover:opacity-80 transition-opacity"
+                    data-tour="datagrid-download"
                 >
                     <FiDownload /> Baixar CSV Completo
                 </button>

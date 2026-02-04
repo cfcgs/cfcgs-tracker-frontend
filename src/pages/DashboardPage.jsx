@@ -23,7 +23,7 @@ if (darkTheme) {
 import {
     getFundsData, getFundTypes, getFundFocuses, getFundStatusData,
     getRecipientCountries, getTotalsByObjective,
-    getCommitmentTimeSeries, getAvailableYears,
+    getCommitmentTimeSeries, getAvailableYears, getHeatmapFilterOptions,
     // --- Novas funções ---
     getHeatmapKpis,
 } from '../services/api';
@@ -102,6 +102,9 @@ const DashboardPage = () => {
     const [fundFocuses, setFundFocuses] = useState([]);
     const [allRecipientCountries, setAllRecipientCountries] = useState([]);
     const [availableYears, setAvailableYears] = useState([]);
+    const [heatmapAvailableYears, setHeatmapAvailableYears] = useState(null);
+    const [heatmapAvailableCountries, setHeatmapAvailableCountries] = useState(null);
+    const [heatmapAvailableObjectives, setHeatmapAvailableObjectives] = useState(null);
     const [loadingFilters, setLoadingFilters] = useState(true); // Renomeado de 'loading'
     const [globalError, setGlobalError] = useState(null); // Renomeado de 'error'
 
@@ -171,6 +174,8 @@ const DashboardPage = () => {
                 
                 setAvailableYears(yearsData || []);
                 setAllRecipientCountries(recipientCountriesData || []);
+                setHeatmapAvailableYears(yearsData || []);
+                setHeatmapAvailableCountries(recipientCountriesData || []);
                 setFundTypes(fundTypesData || []);
                 setFundFocuses(fundFocusesData || []);
                 setAllFunds(fundsResponse || []);
@@ -215,6 +220,37 @@ const DashboardPage = () => {
             }
         };
         fetchHeatmapKpis();
+    }, [
+        loadingFilters,
+        heatmapSelectedYears,
+        heatmapSelectedCountryIds,
+        heatmapSelectedProjectIds,
+        heatmapSelectedObjective,
+    ]);
+
+    useEffect(() => {
+        if (loadingFilters) return;
+        let isMounted = true;
+        const fetchHeatmapFilterOptions = async () => {
+            try {
+                const data = await getHeatmapFilterOptions({
+                    years: heatmapSelectedYears,
+                    countryIds: heatmapSelectedCountryIds,
+                    projectIds: heatmapSelectedProjectIds,
+                    objective: heatmapSelectedObjective,
+                });
+                if (!isMounted) return;
+                setHeatmapAvailableYears(data.years || []);
+                setHeatmapAvailableCountries(data.countries || []);
+                setHeatmapAvailableObjectives(data.objectives || ['all', 'adaptation', 'mitigation', 'both']);
+            } catch (error) {
+                console.error("Falha ao buscar filtros do heatmap:", error);
+            }
+        };
+        fetchHeatmapFilterOptions();
+        return () => {
+            isMounted = false;
+        };
     }, [
         loadingFilters,
         heatmapSelectedYears,
@@ -572,8 +608,9 @@ const DashboardPage = () => {
                 >
                         {/* Filtros Heatmap */}
                         <HeatmapFilters
-                            allYears={availableYears}
-                            allCountries={allRecipientCountries} // Passa objetos {id, name}
+                            allYears={heatmapAvailableYears ?? availableYears}
+                            allCountries={heatmapAvailableCountries ?? allRecipientCountries} // Passa objetos {id, name}
+                            availableObjectives={heatmapAvailableObjectives ?? ['all', 'adaptation', 'mitigation', 'both']}
                             
                             selectedYears={heatmapSelectedYears}
                             selectedCountryIds={heatmapSelectedCountryIds}
