@@ -51,6 +51,40 @@ body {
     border: 3px solid #161B22;
 }
 
+/* Scrollbar para os filtros do react-select */
+.cf-select__value-container {
+    scrollbar-width: thin;
+    scrollbar-color: #30363D transparent;
+}
+.cf-select__value-container::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.cf-select__value-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.cf-select__value-container::-webkit-scrollbar-thumb {
+    background-color: #30363D;
+    border-radius: 999px;
+    border: 2px solid transparent;
+}
+
+.cf-select__menu-list {
+    scrollbar-width: thin;
+    scrollbar-color: #30363D transparent;
+}
+.cf-select__menu-list::-webkit-scrollbar {
+    width: 6px;
+}
+.cf-select__menu-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.cf-select__menu-list::-webkit-scrollbar-thumb {
+    background-color: #30363D;
+    border-radius: 999px;
+    border: 2px solid transparent;
+}
+
 .table-scroll-wrapper {
     overflow-x: auto;
 }
