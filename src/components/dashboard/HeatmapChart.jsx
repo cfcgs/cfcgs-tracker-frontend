@@ -62,6 +62,12 @@ const formatPercent = (value) => {
 };
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 const formatObjective = (objectiveValue) => {
     if (objectiveValue === 'adaptation') {
@@ -128,6 +134,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
     const [tooltipSize, setTooltipSize] = useState({ width: 0, height: 0 });
     const [pinnedKey, setPinnedKey] = useState(null);
     const [showProjects, setShowProjects] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [projectState, setProjectState] = useState({
         key: null,
         projects: [],
@@ -246,6 +253,10 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
     const exportPoints = hasData ? points : [];
     const chartPixelHeight = Math.max(rows.length, 1) * ROW_HEIGHT;
     const chartPixelWidth = Math.max(columns.length, 1) * CELL_WIDTH;
+    const chartHeight = isFullscreen ? null : chartPixelHeight;
+    const chartWidth = isFullscreen ? null : chartPixelWidth;
+    const containerHeight = isFullscreen ? '100%' : chartPixelHeight;
+    const containerWidth = isFullscreen ? '100%' : chartPixelWidth;
 
     const tooltipKey = tooltip
         ? `${tooltip.cell.year}-${tooltip.cell.country_id}-${objective}`
@@ -819,33 +830,549 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
     }, []);
 
     const exportMarginTop = isCountryColumns ? Math.max(headerHeight, 100) : 60;
-    const options = useMemo(() => ({
+    const exportMarginLeft = LABEL_WIDTH + TOTAL_WIDTH + 40;
+    const exportMarginLeftPdf = exportMarginLeft;
+    const exportSourceWidth = chartPixelWidth + exportMarginLeft + 40;
+    const exportSourceHeight = chartPixelHeight + exportMarginTop + 60;
+    const rowHeaderLabel = view === 'country_year' ? 'País receptor' : 'Ano';
+    const columnHeaderLabel = view === 'country_year' ? 'Ano' : 'País receptor';
+    const headerTitleOffset = Math.round(LABEL_WIDTH + TOTAL_WIDTH - 12);
+    const rowHeaderPlainPadded = useMemo(() => {
+        const safeHeaderLabel = rowHeaderLabel.replace(/\s+/g, '\u00A0');
+        const totalHeader = 'Total\u00A0projetos';
+        const spacerCount = Math.max(1, Math.round(100 / 6));
+        const spacer = '\u00A0'.repeat(spacerCount);
+        return `${safeHeaderLabel}${spacer}${totalHeader}`.trimEnd();
+    }, [rowHeaderLabel]);
+    const chartBackgroundColor = isFullscreen ? '#0d1117' : 'transparent';
+    const chartPlotBackground = isFullscreen ? '#0d1117' : 'transparent';
+    const chartMargin = isFullscreen ? [exportMarginTop, 20, 40, exportMarginLeft] : [0, 0, 0, 0];
+    const chartBorderColor = isFullscreen ? 'rgba(255, 255, 255, 0.18)' : 'rgba(48, 54, 61, 0.65)';
+    const chartLabelColor = isFullscreen ? '#f0f6fc' : undefined;
+
+    const rowLabelFormatterLight = useCallback(function () {
+        const index = typeof this.pos === 'number' ? this.pos : this.value;
+        const row = rowMeta[index] || {};
+        const label = escapeHtml(row.label ?? '');
+        const total = escapeHtml(formatNumber(row.projectCount ?? 0));
+        const header = index === 0
+            ? `
+                <div style="display:grid;grid-template-columns:${LABEL_WIDTH - 12}px ${TOTAL_WIDTH}px;gap:10px;color:#0f172a;font-weight:700;">
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(rowHeaderLabel)}</span>
+                    <span style="text-align:right;">Total projetos</span>
+                </div>
+            `
+            : '';
+        return `
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                ${header}
+                <div style="display:grid;grid-template-columns:${LABEL_WIDTH - 12}px ${TOTAL_WIDTH}px;gap:10px;color:#0f172a;">
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</span>
+                    <span style="text-align:right;color:#0f172a;">${total}</span>
+                </div>
+            </div>
+        `;
+    }, [rowHeaderLabel, rowMeta]);
+
+    const rowLabelFormatterDark = useCallback(function () {
+        const index = typeof this.pos === 'number' ? this.pos : this.value;
+        const row = rowMeta[index] || {};
+        const label = escapeHtml(row.label ?? '');
+        const total = escapeHtml(formatNumber(row.projectCount ?? 0));
+        const header = index === 0
+            ? `
+                <div style="display:grid;grid-template-columns:${LABEL_WIDTH - 12}px ${TOTAL_WIDTH}px;gap:10px;color:#f0f6fc;font-weight:700;">
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(rowHeaderLabel)}</span>
+                    <span style="text-align:right;">Total projetos</span>
+                </div>
+            `
+            : '';
+        return `
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                ${header}
+                <div style="display:grid;grid-template-columns:${LABEL_WIDTH - 12}px ${TOTAL_WIDTH}px;gap:10px;color:#f0f6fc;">
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</span>
+                    <span style="text-align:right;color:#f0f6fc;">${total}</span>
+                </div>
+            </div>
+        `;
+    }, [rowHeaderLabel, rowMeta]);
+
+    const rowLabelFormatterPlain = useCallback(function () {
+        const index = typeof this.pos === 'number' ? this.pos : this.value;
+        const row = rowMeta[index] || {};
+        const labelRaw = row.label ?? '';
+        const totalText = formatNumber(row.projectCount ?? 0);
+        const labelMax = Math.max(14, Math.floor((LABEL_WIDTH - 12) / 6));
+        const totalMax = Math.max(6, Math.floor(TOTAL_WIDTH / 6));
+        const labelText = labelRaw.length > labelMax
+            ? `${labelRaw.slice(0, labelMax - 1)}…`
+            : labelRaw;
+        const padRight = (text, length) => text + '\u00A0'.repeat(Math.max(0, length - text.length));
+        const padLeft = (text, length) => '\u00A0'.repeat(Math.max(0, length - text.length)) + text;
+        const line = `${padRight(labelText, labelMax)}  ${padLeft(totalText, totalMax)}`.trimEnd();
+        if (index === 0) {
+            return line;
+        }
+        return line;
+    }, [rowHeaderPlainPadded, rowMeta]);
+
+    const rowHeaderHtmlLight = useMemo(() => (
+        `<div style="display:flex;justify-content:space-between;gap:10px;width:${LABEL_WIDTH + TOTAL_WIDTH - 16}px;color:#0f172a;font-weight:700;">
+            <span style="max-width:${LABEL_WIDTH - 12}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(rowHeaderLabel)}</span>
+            <span style="min-width:54px;text-align:right;">Total projetos</span>
+        </div>`
+    ), [rowHeaderLabel]);
+
+    const rowHeaderHtmlDark = useMemo(() => (
+        `<div style="display:flex;justify-content:space-between;gap:10px;width:${LABEL_WIDTH + TOTAL_WIDTH - 16}px;color:#f0f6fc;font-weight:700;">
+            <span style="max-width:${LABEL_WIDTH - 12}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(rowHeaderLabel)}</span>
+            <span style="min-width:54px;text-align:right;">Total projetos</span>
+        </div>`
+    ), [rowHeaderLabel]);
+
+    const baseTheme = useMemo(() => ({
         chart: {
-            type: 'heatmap',
             backgroundColor: 'transparent',
             margin: [0, 0, 0, 0],
             spacing: [0, 0, 0, 0],
-            height: chartPixelHeight,
             width: chartPixelWidth,
+            height: chartPixelHeight,
+        },
+        xAxis: {
+            visible: false,
+            labels: {
+                enabled: false,
+                formatter: undefined,
+                useHTML: false,
+            },
+        },
+        yAxis: {
+            visible: false,
+            labels: {
+                enabled: false,
+                formatter: undefined,
+                useHTML: false,
+            },
+        },
+        plotOptions: {
+            series: {
+                dataLabels: {
+                    style: {
+                        color: undefined,
+                    },
+                },
+                borderColor: 'rgba(48, 54, 61, 0.65)',
+            },
+        },
+    }), [chartPixelHeight, chartPixelWidth]);
+
+    const fullscreenTheme = useMemo(() => ({
+        chart: {
+            backgroundColor: '#0d1117',
+            plotBackgroundColor: '#0d1117',
+            margin: [exportMarginTop, 20, 40, exportMarginLeft],
+            spacing: [0, 0, 0, 0],
+            width: null,
+            height: null,
+        },
+        xAxis: {
+            visible: true,
+            opposite: true,
+            lineWidth: 0,
+            tickLength: 0,
+            title: {
+                text: columnHeaderLabel,
+                style: {
+                    color: '#f0f6fc',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                },
+            },
+            labels: {
+                enabled: true,
+                rotation: isCountryColumns ? -90 : 0,
+                align: isCountryColumns ? 'right' : 'center',
+                style: {
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    color: '#c9d1d9',
+                    textOverflow: 'ellipsis',
+                },
+            },
+        },
+        yAxis: {
+            visible: true,
+            lineWidth: 0,
+            tickLength: 0,
+            title: {
+                text: null,
+            },
+            labels: {
+                enabled: true,
+                useHTML: true,
+                formatter: rowLabelFormatterDark,
+                style: {
+                    fontSize: '10px',
+                    fontWeight: '600',
+                },
+            },
+        },
+        plotOptions: {
+            series: {
+                dataLabels: {
+                    style: {
+                        color: '#f0f6fc',
+                    },
+                },
+                borderColor: 'rgba(255, 255, 255, 0.18)',
+            },
+        },
+    }), [columnHeaderLabel, exportMarginLeft, exportMarginTop, isCountryColumns, rowLabelFormatterDark]);
+
+    const fullscreenXAxis = useMemo(() => ({
+        ...fullscreenTheme.xAxis,
+        categories: exportColumns,
+        min: 0,
+        max: exportColumns.length - 1,
+    }), [exportColumns, fullscreenTheme.xAxis]);
+
+    const fullscreenYAxis = useMemo(() => ({
+        ...fullscreenTheme.yAxis,
+        categories: exportRows,
+        min: 0,
+        max: exportRows.length - 1,
+        reversed: true,
+    }), [exportRows, fullscreenTheme.yAxis]);
+
+    const compactXAxis = useMemo(() => ({
+        categories: exportColumns,
+        visible: false,
+        min: 0,
+        max: exportColumns.length - 1,
+    }), [exportColumns]);
+
+    const compactYAxis = useMemo(() => ({
+        categories: exportRows,
+        visible: false,
+        min: 0,
+        max: exportRows.length - 1,
+        reversed: true,
+    }), [exportRows]);
+
+    const exportChartOptionsLight = useMemo(() => ({
+        chart: {
+            backgroundColor: 'transparent',
+            plotBackgroundColor: 'transparent',
+            margin: [exportMarginTop, 20, 40, exportMarginLeft],
+        },
+        xAxis: {
+            visible: true,
+            opposite: true,
+            lineWidth: 0,
+            tickLength: 0,
+            title: {
+                text: columnHeaderLabel,
+                style: {
+                    color: '#0f172a',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                },
+            },
+            labels: {
+                enabled: true,
+                rotation: isCountryColumns ? -90 : 0,
+                align: isCountryColumns ? 'right' : 'center',
+                style: {
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    color: '#0f172a',
+                    textOverflow: 'ellipsis',
+                },
+            },
+        },
+        yAxis: {
+            visible: true,
+            lineWidth: 0,
+            tickLength: 0,
+            title: {
+                text: null,
+            },
+            labels: {
+                enabled: true,
+                useHTML: true,
+                formatter: rowLabelFormatterLight,
+                style: {
+                    fontSize: '10px',
+                    fontWeight: '600',
+                },
+            },
+        },
+        plotOptions: {
+            series: {
+                dataLabels: {
+                    style: {
+                        color: '#0f172a',
+                    },
+                },
+                borderColor: 'rgba(15, 23, 42, 0.25)',
+            },
+        },
+    }), [columnHeaderLabel, exportMarginLeft, exportMarginTop, isCountryColumns, rowLabelFormatterLight]);
+
+    const exportChartOptionsDark = useMemo(() => ({
+        chart: {
+            backgroundColor: '#0d1117',
+            plotBackgroundColor: '#0d1117',
+            margin: [exportMarginTop, 20, 40, exportMarginLeftPdf],
+        },
+        xAxis: {
+            visible: true,
+            opposite: true,
+            lineWidth: 0,
+            tickLength: 0,
+            title: {
+                text: columnHeaderLabel,
+                style: {
+                    color: '#f0f6fc',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                },
+            },
+            labels: {
+                enabled: true,
+                rotation: isCountryColumns ? -90 : 0,
+                align: isCountryColumns ? 'right' : 'center',
+                style: {
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    color: '#f0f6fc',
+                    textOverflow: 'ellipsis',
+                },
+            },
+        },
+        yAxis: {
+            visible: true,
+            lineWidth: 0,
+            tickLength: 0,
+            title: {
+                text: null,
+            },
+            labels: {
+                enabled: true,
+                useHTML: true,
+                formatter: rowLabelFormatterDark,
+                style: {
+                    fontSize: '10px',
+                    fontWeight: '600',
+                },
+            },
+        },
+        plotOptions: {
+            series: {
+                dataLabels: {
+                    style: {
+                        color: '#f0f6fc',
+                    },
+                },
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+            },
+        },
+    }), [columnHeaderLabel, exportMarginLeft, exportMarginTop, isCountryColumns, rowLabelFormatterDark]);
+
+    const exportChartOptionsPdf = useMemo(() => ({
+        chart: {
+            backgroundColor: '#0d1117',
+            plotBackgroundColor: '#0d1117',
+            margin: [exportMarginTop, 20, 40, exportMarginLeftPdf],
+            style: { color: '#f0f6fc' },
+        },
+        xAxis: {
+            visible: true,
+            opposite: true,
+            lineWidth: 0,
+            tickLength: 0,
+            title: {
+                text: columnHeaderLabel,
+                style: {
+                    color: '#f0f6fc',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                },
+            },
+            labels: {
+                enabled: true,
+                rotation: isCountryColumns ? -90 : 0,
+                align: isCountryColumns ? 'right' : 'center',
+                style: {
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    color: '#f0f6fc',
+                    textOverflow: 'ellipsis',
+                },
+            },
+        },
+        yAxis: {
+            visible: true,
+            lineWidth: 0,
+            tickLength: 0,
+            title: {
+                text: rowHeaderPlainPadded,
+                align: 'high',
+                rotation: 0,
+                y: -18,
+                x: headerTitleOffset,
+                style: {
+                    color: '#f0f6fc',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre',
+                },
+            },
+            labels: {
+                enabled: true,
+                useHTML: false,
+                formatter: rowLabelFormatterPlain,
+                style: {
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    color: '#f0f6fc',
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre',
+                },
+            },
+        },
+        plotOptions: {
+            series: {
+                dataLabels: {
+                    style: {
+                        color: '#f0f6fc',
+                    },
+                },
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+            },
+        },
+    }), [columnHeaderLabel, exportMarginLeftPdf, exportMarginTop, isCountryColumns, rowLabelFormatterPlain]);
+
+    const exportChartOptionsPrint = useMemo(() => ({
+        ...exportChartOptionsDark,
+        chart: {
+            ...exportChartOptionsDark.chart,
+            width: exportSourceWidth + 350,
+            style: { color: '#f0f6fc' },
+        },
+        xAxis: {
+            ...exportChartOptionsDark.xAxis,
+            labels: {
+                ...exportChartOptionsDark.xAxis?.labels,
+                style: {
+                    ...(exportChartOptionsDark.xAxis?.labels?.style || {}),
+                    color: '#f0f6fc',
+                    fill: '#f0f6fc',
+                },
+            },
+            title: {
+                ...exportChartOptionsDark.xAxis?.title,
+                style: {
+                    ...(exportChartOptionsDark.xAxis?.title?.style || {}),
+                    color: '#f0f6fc',
+                },
+            },
+        },
+        yAxis: {
+            ...exportChartOptionsDark.yAxis,
+            labels: {
+                ...exportChartOptionsDark.yAxis?.labels,
+                useHTML: false,
+                formatter: rowLabelFormatterPlain,
+                style: {
+                    ...(exportChartOptionsDark.yAxis?.labels?.style || {}),
+                    color: '#f0f6fc',
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre',
+                },
+            },
+            title: {
+                text: rowHeaderPlainPadded,
+                align: 'high',
+                rotation: 0,
+                y: -18,
+                x: headerTitleOffset,
+                style: {
+                    color: '#f0f6fc',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre',
+                },
+            },
+        },
+        plotOptions: {
+            ...exportChartOptionsDark.plotOptions,
+            series: {
+                ...exportChartOptionsDark.plotOptions?.series,
+                dataLabels: {
+                    ...exportChartOptionsDark.plotOptions?.series?.dataLabels,
+                    style: {
+                        ...(exportChartOptionsDark.plotOptions?.series?.dataLabels?.style || {}),
+                        color: '#f0f6fc',
+                    },
+                },
+            },
+        },
+    }), [exportChartOptionsDark, exportSourceWidth, headerTitleOffset, rowHeaderPlainPadded, rowLabelFormatterPlain]);
+
+    const applyChartTheme = useCallback((chartInstance, theme) => {
+        if (!chartInstance) {
+            return;
+        }
+        chartInstance.update(theme, false, false, false);
+        chartInstance.reflow();
+        chartInstance.redraw(false);
+    }, []);
+    const options = useMemo(() => ({
+        chart: {
+            type: 'heatmap',
+            backgroundColor: chartBackgroundColor,
+            plotBackgroundColor: chartPlotBackground,
+            margin: chartMargin,
+            spacing: [0, 0, 0, 0],
+            height: chartHeight,
+            width: chartWidth,
             animation: false,
             events: {
                 render() {},
+                fullscreenOpen() {
+                    setIsFullscreen(true);
+                },
+                fullscreenClose() {
+                    setIsFullscreen(false);
+                },
+                beforePrint() {
+                    applyChartTheme(this, exportChartOptionsPrint);
+                    if (this.xAxis?.[0]) {
+                        this.xAxis[0].update({
+                            labels: {
+                                enabled: true,
+                                style: { color: '#f0f6fc', fill: '#f0f6fc' },
+                            },
+                            title: {
+                                ...(this.xAxis[0].options?.title || {}),
+                                style: { color: '#f0f6fc' },
+                            },
+                        }, false);
+                    }
+                    this.redraw(false);
+                },
+                afterPrint() {
+                    applyChartTheme(this, baseTheme);
+                },
             },
         },
         title: { text: null },
-        xAxis: {
-            categories: exportColumns,
-            visible: false,
-            min: 0,
-            max: exportColumns.length - 1,
-        },
-        yAxis: {
-            categories: exportRows,
-            visible: false,
-            min: 0,
-            max: exportRows.length - 1,
-            reversed: true,
-        },
+        xAxis: isFullscreen ? fullscreenXAxis : compactXAxis,
+        yAxis: isFullscreen ? fullscreenYAxis : compactYAxis,
         colorAxis: {
             min: 0,
             max: maxColorValue > 0 ? maxColorValue : 1,
@@ -860,7 +1387,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
         plotOptions: {
             series: {
                 borderWidth: 1,
-                borderColor: 'rgba(48, 54, 61, 0.65)',
+                borderColor: chartBorderColor,
                 dataLabels: {
                     enabled: true,
                     formatter: function () {
@@ -871,6 +1398,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                         fontSize: '10px',
                         fontWeight: '600',
                         textOutline: 'none',
+                        ...(chartLabelColor ? { color: chartLabelColor } : {}),
                     },
                 },
                 point: {
@@ -897,6 +1425,10 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
         credits: { enabled: false },
         exporting: {
             enabled: true,
+            sourceWidth: exportSourceWidth,
+            sourceHeight: exportSourceHeight,
+            allowHTML: true,
+            fallbackToExportServer: true,
             buttons: {
                 contextButton: {
                     enabled: true,
@@ -918,33 +1450,36 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                     },
                 },
             },
-            chartOptions: {
-                chart: {
-                    margin: [exportMarginTop, 20, 40, 120],
-                },
-                xAxis: {
-                    visible: true,
-                    opposite: true,
-                    lineWidth: 0,
-                    tickLength: 0,
-                    labels: {
-                        rotation: isCountryColumns ? -90 : 0,
-                        align: isCountryColumns ? 'right' : 'center',
-                        style: {
-                            fontSize: '10px',
-                            textOverflow: 'ellipsis',
-                        },
+            chartOptions: exportChartOptionsLight,
+            menuItemDefinitions: {
+                downloadPNG: {
+                    textKey: 'downloadPNG',
+                    onclick: async function () {
+                        await this.exporting?.exportChart({ type: 'image/png' }, exportChartOptionsLight);
                     },
                 },
-                yAxis: {
-                    visible: true,
-                    lineWidth: 0,
-                    tickLength: 0,
-                    labels: {
-                        style: {
-                            fontSize: '10px',
-                            textOverflow: 'ellipsis',
-                        },
+                downloadJPEG: {
+                    textKey: 'downloadJPEG',
+                    onclick: async function () {
+                        await this.exporting?.exportChart({ type: 'image/jpeg' }, exportChartOptionsDark);
+                    },
+                },
+                downloadPDF: {
+                    textKey: 'downloadPDF',
+                    onclick: async function () {
+                        await this.exporting?.exportChart({ type: 'application/pdf' }, exportChartOptionsPdf);
+                    },
+                },
+                downloadSVG: {
+                    textKey: 'downloadSVG',
+                    onclick: async function () {
+                        await this.exporting?.exportChart({ type: 'image/svg+xml' }, exportChartOptionsDark);
+                    },
+                },
+                printChart: {
+                    textKey: 'printChart',
+                    onclick: function () {
+                        this.exporting?.print();
                     },
                 },
             },
@@ -953,17 +1488,30 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
         columns,
         rows,
         maxColorValue,
-        points,
-        exportColumns,
-        exportRows,
         exportPoints,
         handlePointOver,
         handlePointOut,
         handlePointClick,
-        exportMarginTop,
-        isCountryColumns,
-        chartPixelHeight,
-        chartPixelWidth,
+        exportSourceHeight,
+        exportSourceWidth,
+        chartHeight,
+        chartWidth,
+        chartBackgroundColor,
+        chartPlotBackground,
+        chartMargin,
+        chartBorderColor,
+        chartLabelColor,
+        isFullscreen,
+        fullscreenXAxis,
+        fullscreenYAxis,
+        compactXAxis,
+        compactYAxis,
+        exportChartOptionsLight,
+        exportChartOptionsDark,
+        exportChartOptionsPdf,
+        exportChartOptionsPrint,
+        baseTheme,
+        applyChartTheme,
     ]);
 
     const tooltipStyle = useMemo(() => {
@@ -1368,8 +1916,8 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                                                 options={options}
                                                 containerProps={{
                                                     style: {
-                                                        height: chartPixelHeight,
-                                                        width: chartPixelWidth,
+                                                        height: containerHeight,
+                                                        width: containerWidth,
                                                     },
                                                 }}
                                             />
