@@ -8,6 +8,11 @@ import { loadPaginatedProjects } from '../../services/api';
 // Styles for react-select (adjust colors to match your theme.css or Tailwind)
 const CONTROL_HEIGHT = 48;
 const selectStyles = {
+    container: (provided) => ({
+        ...provided,
+        width: '100%',
+        maxWidth: '100%',
+    }),
     control: (provided) => ({
         ...provided,
         backgroundColor: '#161B22', // dark-card equivalent
@@ -29,8 +34,6 @@ const selectStyles = {
         ...provided,
         backgroundColor: '#161B22', // dark-card
         zIndex: 50,
-        width: '100%',
-        maxWidth: '100%',
     }),
     menuList: (provided) => ({
         ...provided,
