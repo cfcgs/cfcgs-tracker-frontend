@@ -202,11 +202,6 @@ const HeatmapFilters = ({
         const label = projectOptionCacheRef.current.get(id) || `Projeto ${id}`;
         return { value: id, label };
     });
-    const projectFilterMeta = useMemo(() => ({
-        years: selectedYears,
-        countryIds: selectedCountryIds,
-        objective: selectedObjective,
-    }), [selectedCountryIds, selectedObjective, selectedYears]);
     const viewSelectStyles = useMemo(() => ({
         ...selectStyles,
         singleValue: (provided) => ({
@@ -221,7 +216,7 @@ const HeatmapFilters = ({
     const loadProjectOptions = async (search, loadedOptions, additional) => {
         const result = await loadPaginatedProjects(search, loadedOptions, {
             ...additional,
-            filters: projectFilterMeta,
+            filters: {},
         });
         result.options?.forEach((opt) => {
             projectOptionCacheRef.current.set(opt.value, opt.label);
@@ -312,8 +307,7 @@ const HeatmapFilters = ({
                         placeholder="Todos os Projetos"
                         closeMenuOnSelect={false}
                         debounceTimeout={300}
-                        additional={{ page: 0, filters: projectFilterMeta }}
-                        cacheUniqs={[selectedYears.join(','), selectedCountryIds.join(','), selectedObjective]}
+                        additional={{ page: 0, filters: {} }}
                         loadingMessage={() => 'Carregando mais projetos...'}
                      />
                 </div>

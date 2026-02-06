@@ -229,30 +229,10 @@ const DashboardPage = () => {
     ]);
 
     useEffect(() => {
-        if (loadingFilters) return;
-        let isMounted = true;
-        const fetchHeatmapFilterOptions = async () => {
-            try {
-                const data = await getHeatmapFilterOptions({
-                    years: heatmapSelectedYears,
-                    countryIds: heatmapSelectedCountryIds,
-                    projectIds: heatmapSelectedProjectIds,
-                    objective: heatmapSelectedObjective,
-                });
-                if (!isMounted) return;
-                setHeatmapAvailableYears(data.years || []);
-                setHeatmapAvailableCountries(data.countries || []);
-                setHeatmapAvailableObjectives(data.objectives || ['all', 'adaptation', 'mitigation', 'both']);
-            } catch (error) {
-                console.error("Falha ao buscar filtros do heatmap:", error);
-            }
-        };
-        fetchHeatmapFilterOptions();
-        return () => {
-            isMounted = false;
-        };
+        setHeatmapAvailableYears(null);
+        setHeatmapAvailableCountries(null);
+        setHeatmapAvailableObjectives(null);
     }, [
-        loadingFilters,
         heatmapSelectedYears,
         heatmapSelectedCountryIds,
         heatmapSelectedProjectIds,
