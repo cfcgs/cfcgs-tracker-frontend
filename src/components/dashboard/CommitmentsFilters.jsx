@@ -5,6 +5,11 @@ import Select from 'react-select';
 // Estilos customizados para o react-select combinar com o tema escuro
 const CONTROL_HEIGHT = 44;
 const selectStyles = {
+  container: (provided) => ({
+    ...provided,
+    width: '100%',
+    maxWidth: '100%',
+  }),
   control: (provided) => ({
     ...provided,
     backgroundColor: '#0D1117',

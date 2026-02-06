@@ -411,19 +411,23 @@ const DashboardPage = () => {
         } else if (value === 0) {
             displayValue = '0';
         } else if (isCurrency) {
-            if (value >= 1000000) {
-                const valueInMillions = value / 1000000;
+            // Valores de compromissos estão em milhares de USD
+            if (value >= 1_000_000) {
+                const valueInBillions = value / 1_000_000;
+                displayValue = `${valueInBillions.toLocaleString(undefined, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                })} bi`;
+            } else if (value >= 1000) {
+                const valueInMillions = value / 1000;
                 displayValue = `${valueInMillions.toLocaleString(undefined, {
                     minimumFractionDigits: 1,
                     maximumFractionDigits: 1,
                 })} mi`;
-            } else if (value >= 1000) {
-                const valueInThousands = value / 1000;
-                displayValue = `${valueInThousands.toLocaleString(undefined, {
-                    maximumFractionDigits: 0,
-                })} k`;
             } else {
-                displayValue = value.toLocaleString();
+                displayValue = `${value.toLocaleString(undefined, {
+                    maximumFractionDigits: 1,
+                })} mil`;
             }
         } else {
             displayValue = value.toLocaleString();

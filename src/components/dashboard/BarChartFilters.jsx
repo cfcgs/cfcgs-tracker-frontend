@@ -4,6 +4,11 @@ import Select from 'react-select';
 // Reutiliza os mesmos estilos
 const CONTROL_HEIGHT = 44;
 const selectStyles = {
+  container: (provided) => ({
+    ...provided,
+    width: '100%',
+    maxWidth: '100%',
+  }),
   control: (provided) => ({
     ...provided,
     backgroundColor: '#0D1117',
