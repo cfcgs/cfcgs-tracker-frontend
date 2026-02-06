@@ -3,6 +3,7 @@ import React, { useRef } from 'react';
 import Select from 'react-select';
 
 // Estilos customizados para o react-select combinar com o tema escuro
+const CONTROL_HEIGHT = 44;
 const selectStyles = {
   control: (provided) => ({
     ...provided,
@@ -10,23 +11,57 @@ const selectStyles = {
     borderColor: '#30363D',
     color: '#C9D1D9',
     minWidth: '250px',
+    minHeight: `${CONTROL_HEIGHT}px`,
+    maxHeight: `${CONTROL_HEIGHT}px`,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   }),
   menu: (provided) => ({
     ...provided,
     backgroundColor: '#161B22',
+    width: '100%',
+    maxWidth: '100%',
+  }),
+  menuList: (provided) => ({
+    ...provided,
+    maxHeight: '280px',
+    overflowY: 'auto',
   }),
   option: (provided, state) => ({
     ...provided,
     backgroundColor: state.isSelected ? '#58A6FF' : state.isFocused ? '#30363D' : '#161B22',
     color: '#C9D1D9',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   }),
   multiValue: (provided) => ({
     ...provided,
     backgroundColor: '#30363D',
+    margin: '2px 4px 2px 0',
   }),
   multiValueLabel: (provided) => ({
     ...provided,
     color: '#C9D1D9',
+    maxWidth: '140px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  }),
+  singleValue: (provided) => ({
+    ...provided,
+    maxWidth: '160px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  }),
+  valueContainer: (provided) => ({
+    ...provided,
+    maxHeight: `${CONTROL_HEIGHT - 6}px`,
+    overflowY: 'auto',
+    paddingTop: 2,
+    paddingBottom: 2,
   }),
   input: (provided) => ({
       ...provided,
@@ -81,6 +116,7 @@ const Filters = ({ years, countries, selectedYears, selectedCountries, onYearCha
                     }}
                     onMenuOpen={markMenuOpen('years')}
                     onMenuClose={markMenuClose('years')}
+                    classNamePrefix="cf-select"
                     styles={selectStyles}
                     placeholder="Todos os anos"
                 />
@@ -105,6 +141,7 @@ const Filters = ({ years, countries, selectedYears, selectedCountries, onYearCha
                     }}
                     onMenuOpen={markMenuOpen('countries')}
                     onMenuClose={markMenuClose('countries')}
+                    classNamePrefix="cf-select"
                     styles={selectStyles}
                     placeholder="Selecione um ou mais países..."
                 />

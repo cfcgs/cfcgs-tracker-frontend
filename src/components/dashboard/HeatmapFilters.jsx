@@ -1,11 +1,12 @@
 // src/components/dashboard/HeatmapFilters.jsx
 import React, { useMemo, useRef } from 'react';
-import Select from 'react-select';
+import Select, { components } from 'react-select';
 import { AsyncPaginate } from 'react-select-async-paginate';
 import { loadPaginatedProjects } from '../../services/api';
 
 
 // Styles for react-select (adjust colors to match your theme.css or Tailwind)
+const CONTROL_HEIGHT = 48;
 const selectStyles = {
     control: (provided) => ({
         ...provided,
@@ -13,6 +14,11 @@ const selectStyles = {
         borderColor: '#30363D', // dark-border equivalent
         color: '#C9D1D9', // dark-text equivalent
         minWidth: '150px',
+        minHeight: `${CONTROL_HEIGHT}px`,
+        maxHeight: `${CONTROL_HEIGHT}px`,
+        width: '100%',
+        maxWidth: '100%',
+        overflow: 'hidden',
         boxShadow: 'none',
         '&:hover': {
             borderColor: '#58A6FF' // accent-blue on hover
@@ -22,7 +28,14 @@ const selectStyles = {
     menu: (provided) => ({
         ...provided,
         backgroundColor: '#161B22', // dark-card
-        zIndex: 50
+        zIndex: 50,
+        width: '100%',
+        maxWidth: '100%',
+    }),
+    menuList: (provided) => ({
+        ...provided,
+        maxHeight: '280px',
+        overflowY: 'auto',
     }),
     menuPortal: (provided) => ({
         ...provided,
@@ -32,6 +45,9 @@ const selectStyles = {
         ...provided,
         backgroundColor: state.isSelected ? '#58A6FF' : state.isFocused ? '#30363D' : '#161B22',
         color: state.isSelected ? '#FFFFFF' : '#C9D1D9', // white text when selected
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
         ':active': { // Prevent blue flash on click
             backgroundColor: state.isSelected ? '#58A6FF' : '#404854'
         }
@@ -49,8 +65,15 @@ const selectStyles = {
         ...provided,
         color: '#58A6FF', // accent-blue
     }),
-    multiValue: (provided) => ({ ...provided, backgroundColor: '#30363D' }),
-    multiValueLabel: (provided) => ({ ...provided, color: '#C9D1D9' }),
+    multiValue: (provided) => ({ ...provided, backgroundColor: '#30363D', margin: '2px 4px 2px 0' }),
+    multiValueLabel: (provided) => ({
+        ...provided,
+        color: '#C9D1D9',
+        maxWidth: '140px',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+    }),
     multiValueRemove: (provided) => ({
         ...provided,
         color: '#8B949E', // dark-text-secondary
@@ -59,9 +82,23 @@ const selectStyles = {
             color: 'white',
         },
     }),
+    valueContainer: (provided) => ({
+        ...provided,
+        maxHeight: `${CONTROL_HEIGHT - 6}px`,
+        overflowY: 'auto',
+        paddingTop: 2,
+        paddingBottom: 2,
+    }),
     input: (provided) => ({ ...provided, color: '#C9D1D9' }),
     placeholder: (provided) => ({ ...provided, color: '#8B949E' }), // dark-text-secondary
-    singleValue: (provided) => ({ ...provided, color: '#C9D1D9' }),
+    singleValue: (provided) => ({
+        ...provided,
+        color: '#C9D1D9',
+        maxWidth: '160px',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+    }),
     indicatorSeparator: () => ({ display: 'none' }), // Hide the separator
     dropdownIndicator: (provided) => ({ ...provided, color: '#8B949E', ':hover': { color: '#C9D1D9' } }), // Style dropdown arrow
 };
@@ -110,6 +147,18 @@ const HeatmapFilters = ({
     const getSelectedOption = (options, value) => options.find(opt => opt.value === value) || null;
     // getSelectedOptions (para multi-select)
     const getSelectedOptions = (options, values) => options.filter(opt => values.includes(opt.value));
+    const projectOptionCacheRef = useRef(new Map());
+    const selectComponents = useMemo(() => ({
+        MultiValueLabel: (props) => (
+            <components.MultiValueLabel
+                {...props}
+                innerProps={{
+                    ...props.innerProps,
+                    title: props.data?.label,
+                }}
+            />
+        ),
+    }), []);
     const menuInteractionRef = useRef({});
     const markMenuOpen = (key) => () => {
         menuInteractionRef.current[key] = true;
@@ -129,6 +178,11 @@ const HeatmapFilters = ({
     };
 
     const handleProjectChange = (selectedOptions) => {
+        if (selectedOptions?.length) {
+            selectedOptions.forEach((opt) => {
+                projectOptionCacheRef.current.set(opt.value, opt.label);
+            });
+        }
         onProjectChange(selectedOptions ? selectedOptions.map(opt => opt.value) : []);
         if (typeof document !== 'undefined') {
             document.dispatchEvent(new CustomEvent('tour:filter-change', {
@@ -142,152 +196,182 @@ const HeatmapFilters = ({
     };
 
     const selectedProjectObjects = selectedProjectIds.map(id => {
-         return { value: id, label: `Projeto ID: ${id}` };
+        const label = projectOptionCacheRef.current.get(id) || `Projeto ${id}`;
+        return { value: id, label };
     });
     const projectFilterMeta = useMemo(() => ({
         years: selectedYears,
         countryIds: selectedCountryIds,
         objective: selectedObjective,
     }), [selectedCountryIds, selectedObjective, selectedYears]);
+    const viewSelectStyles = useMemo(() => ({
+        ...selectStyles,
+        singleValue: (provided) => ({
+            ...provided,
+            color: '#C9D1D9',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+        }),
+    }), []);
+    const loadProjectOptions = async (search, loadedOptions, additional) => {
+        const result = await loadPaginatedProjects(search, loadedOptions, {
+            ...additional,
+            filters: projectFilterMeta,
+        });
+        result.options?.forEach((opt) => {
+            projectOptionCacheRef.current.set(opt.value, opt.label);
+        });
+        return result;
+    };
 
     return (
         <div
-            className="flex flex-wrap gap-4 p-4 bg-dark-card rounded-lg shadow mb-4 items-center transition-all duration-200 ease-in-out"
+            className="flex flex-col gap-3 p-4 bg-dark-card rounded-lg shadow mb-4 items-stretch transition-all duration-200 ease-in-out"
             data-tour="heatmap-filters"
         >
-            
-            {/* Year Filter (Multi Select) */}
-            <div className="flex-grow min-w-[150px]">
-                <label className="block text-sm font-medium text-dark-text-secondary mb-1">Anos</label>
-                <Select
-                    isMulti
-                    options={yearOptions}
-                    value={getSelectedOptions(yearOptions, selectedYears)}
-                    onChange={(selectedOptions) => {
-                        onYearChange(selectedOptions.map(opt => opt.value));
-                        if (typeof document !== 'undefined') {
-                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
-                                detail: {
-                                    stepId: 'heatmap-filters',
-                                    filter: 'years',
-                                    filled: Boolean(selectedOptions?.length),
-                                },
-                            }));
-                        }
-                    }}
-                    onMenuOpen={markMenuOpen('years')}
-                    onMenuClose={markMenuClose('years')}
-                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
-                    styles={selectStyles}
-                    placeholder="Todos os Anos"
-                    closeMenuOnSelect={false}
-                />
-            </div>
+            <div className="flex flex-wrap gap-4 items-center">
+                {/* Year Filter (Multi Select) */}
+                <div className="flex-1 min-w-[150px]">
+                    <label className="block text-sm font-medium text-dark-text-secondary mb-1">Anos</label>
+                    <Select
+                        isMulti
+                        options={yearOptions}
+                        value={getSelectedOptions(yearOptions, selectedYears)}
+                        onChange={(selectedOptions) => {
+                            onYearChange(selectedOptions.map(opt => opt.value));
+                            if (typeof document !== 'undefined') {
+                                document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                    detail: {
+                                        stepId: 'heatmap-filters',
+                                        filter: 'years',
+                                        filled: Boolean(selectedOptions?.length),
+                                    },
+                                }));
+                            }
+                        }}
+                        onMenuOpen={markMenuOpen('years')}
+                        onMenuClose={markMenuClose('years')}
+                        menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                        classNamePrefix="cf-select"
+                        components={selectComponents}
+                        styles={selectStyles}
+                        placeholder="Todos os Anos"
+                        closeMenuOnSelect={false}
+                    />
+                </div>
 
-            {/* Country Filter (Multi Select) */}
-            <div className="flex-grow min-w-[200px]">
-                <label className="block text-sm font-medium text-dark-text-secondary mb-1">Países</label>
-                <Select
-                    isMulti
-                    options={countryOptions}
-                    value={getSelectedOptions(countryOptions, selectedCountryIds)}
-                    onChange={(selectedOptions) => {
-                        onCountryChange(selectedOptions.map(opt => opt.value));
-                        if (typeof document !== 'undefined') {
-                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
-                                detail: {
-                                    stepId: 'heatmap-filters',
-                                    filter: 'countries',
-                                    filled: Boolean(selectedOptions?.length),
-                                },
-                            }));
-                        }
-                    }}
-                    onMenuOpen={markMenuOpen('countries')}
-                    onMenuClose={markMenuClose('countries')}
-                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
-                    styles={selectStyles}
-                    placeholder="Todos os Países"
-                    closeMenuOnSelect={false}
-                />
-            </div>
+                {/* Country Filter (Multi Select) */}
+                <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-dark-text-secondary mb-1">Países</label>
+                    <Select
+                        isMulti
+                        options={countryOptions}
+                        value={getSelectedOptions(countryOptions, selectedCountryIds)}
+                        onChange={(selectedOptions) => {
+                            onCountryChange(selectedOptions.map(opt => opt.value));
+                            if (typeof document !== 'undefined') {
+                                document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                    detail: {
+                                        stepId: 'heatmap-filters',
+                                        filter: 'countries',
+                                        filled: Boolean(selectedOptions?.length),
+                                    },
+                                }));
+                            }
+                        }}
+                        onMenuOpen={markMenuOpen('countries')}
+                        onMenuClose={markMenuClose('countries')}
+                        menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                        classNamePrefix="cf-select"
+                        components={selectComponents}
+                        styles={selectStyles}
+                        placeholder="Todos os Países"
+                        closeMenuOnSelect={false}
+                    />
+                </div>
 
-            {/* Project Filter (Multi Select) */}
-            <div className="w-[280px] min-w-[200px] min-h-[60px] max-h-[60px]">
-                <label className="block text-sm font-medium text-dark-text-secondary mb-1">Projetos</label>
-                 <AsyncPaginate
-                    isMulti
-                    value={selectedProjectObjects}
-                    loadOptions={(search, loadedOptions, additional) =>
-                        loadPaginatedProjects(search, loadedOptions, {
-                            ...additional,
-                            filters: projectFilterMeta,
-                        })
-                    }
-                    onChange={handleProjectChange}
-                    onMenuOpen={markMenuOpen('projects')}
-                    onMenuClose={markMenuClose('projects')}
-                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
-                    styles={selectStyles}
-                    placeholder="Buscar e selecionar projetos..."
-                    closeMenuOnSelect={false}
-                    debounceTimeout={300}
-                    additional={{ page: 0, filters: projectFilterMeta }}
-                    cacheUniqs={[selectedYears.join(','), selectedCountryIds.join(','), selectedObjective]}
-                    loadingMessage={() => 'Carregando mais projetos...'}
-                 />
-            </div>
+                {/* Project Filter (Multi Select) */}
+                <div className="flex-1 min-w-[240px]">
+                    <label className="block text-sm font-medium text-dark-text-secondary mb-1">Projetos</label>
+                     <AsyncPaginate
+                        isMulti
+                        value={selectedProjectObjects}
+                        loadOptions={loadProjectOptions}
+                        onChange={handleProjectChange}
+                        onMenuOpen={markMenuOpen('projects')}
+                        onMenuClose={markMenuClose('projects')}
+                        menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                        classNamePrefix="cf-select"
+                        components={selectComponents}
+                        styles={selectStyles}
+                        placeholder="Todos os Projetos"
+                        closeMenuOnSelect={false}
+                        debounceTimeout={300}
+                        additional={{ page: 0, filters: projectFilterMeta }}
+                        cacheUniqs={[selectedYears.join(','), selectedCountryIds.join(','), selectedObjective]}
+                        loadingMessage={() => 'Carregando mais projetos...'}
+                     />
+                </div>
 
-            {/* Objective Filter (Single Select) */}
-            <div className="flex-grow min-w-[150px]">
-                <label className="block text-sm font-medium text-dark-text-secondary mb-1">Objetivo</label>
-                <Select
-                    options={filteredObjectiveOptions}
-                    value={getSelectedOption(filteredObjectiveOptions, selectedObjective)}
-                    onChange={(selectedOption) => {
-                        onObjectiveChange(selectedOption ? selectedOption.value : 'all');
-                        if (typeof document !== 'undefined') {
-                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
-                                detail: {
-                                    stepId: 'heatmap-filters',
-                                    filter: 'objective',
-                                    filled: Boolean(selectedOption),
-                                },
-                            }));
-                        }
-                    }}
-                    onMenuOpen={markMenuOpen('objective')}
-                    onMenuClose={markMenuClose('objective')}
-                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
-                    styles={selectStyles}
-                    placeholder="Todos Objetivos"
-                />
+                {/* Objective Filter (Single Select) */}
+                <div className="flex-1 min-w-[170px]">
+                    <label className="block text-sm font-medium text-dark-text-secondary mb-1">Objetivo</label>
+                    <Select
+                        options={filteredObjectiveOptions}
+                        value={getSelectedOption(filteredObjectiveOptions, selectedObjective)}
+                        onChange={(selectedOption) => {
+                            onObjectiveChange(selectedOption ? selectedOption.value : 'all');
+                            if (typeof document !== 'undefined') {
+                                document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                    detail: {
+                                        stepId: 'heatmap-filters',
+                                        filter: 'objective',
+                                        filled: Boolean(selectedOption),
+                                    },
+                                }));
+                            }
+                        }}
+                        onMenuOpen={markMenuOpen('objective')}
+                        onMenuClose={markMenuClose('objective')}
+                        menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                        classNamePrefix="cf-select"
+                        components={selectComponents}
+                        styles={selectStyles}
+                        placeholder="Todos Objetivos"
+                    />
+                </div>
             </div>
 
             {/* View Filter (Single Select) */}
-            <div className="flex-grow min-w-[250px]">
-                <label className="block text-sm font-medium text-dark-text-secondary mb-1">Visualização</label>
-                <Select
-                    options={viewOptions}
-                    value={getSelectedOption(viewOptions, selectedView)}
-                    onChange={(selectedOption) => {
-                        onViewChange(selectedOption ? selectedOption.value : 'country_year');
-                        if (typeof document !== 'undefined') {
-                            document.dispatchEvent(new CustomEvent('tour:filter-change', {
-                                detail: {
-                                    stepId: 'heatmap-filters',
-                                    filter: 'view',
-                                    filled: Boolean(selectedOption),
-                                },
-                            }));
-                        }
-                    }}
-                    onMenuOpen={markMenuOpen('view')}
-                    onMenuClose={markMenuClose('view')}
-                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
-                    styles={selectStyles}
-                    placeholder="Selecionar Visão"
-                />
+            <div className="flex w-full">
+                <div className="flex-1 min-w-[230px]">
+                    <label className="block text-sm font-medium text-dark-text-secondary mb-1">Visualização</label>
+                    <Select
+                        options={viewOptions}
+                        value={getSelectedOption(viewOptions, selectedView)}
+                        onChange={(selectedOption) => {
+                            onViewChange(selectedOption ? selectedOption.value : 'country_year');
+                            if (typeof document !== 'undefined') {
+                                document.dispatchEvent(new CustomEvent('tour:filter-change', {
+                                    detail: {
+                                        stepId: 'heatmap-filters',
+                                        filter: 'view',
+                                        filled: Boolean(selectedOption),
+                                    },
+                                }));
+                            }
+                        }}
+                        onMenuOpen={markMenuOpen('view')}
+                        onMenuClose={markMenuClose('view')}
+                        menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                        classNamePrefix="cf-select"
+                        components={selectComponents}
+                        styles={viewSelectStyles}
+                        placeholder="Selecionar Visão"
+                    />
+                </div>
             </div>
         </div>
     );

@@ -2,12 +2,62 @@ import React, { useRef } from 'react';
 import Select from 'react-select';
 
 // Estilos customizados para o react-select (pode ser movido para um arquivo separado)
+const CONTROL_HEIGHT = 44;
 const selectStyles = {
-  control: (provided) => ({ ...provided, backgroundColor: '#0D1117', borderColor: '#30363D', color: '#C9D1D9', minWidth: '200px' }),
-  menu: (provided) => ({ ...provided, backgroundColor: '#161B22' }),
-  option: (provided, state) => ({ ...provided, backgroundColor: state.isSelected ? '#58A6FF' : state.isFocused ? '#30363D' : '#161B22', color: '#C9D1D9' }),
-  multiValue: (provided) => ({ ...provided, backgroundColor: '#30363D' }),
-  multiValueLabel: (provided) => ({ ...provided, color: '#C9D1D9' }),
+  control: (provided) => ({
+    ...provided,
+    backgroundColor: '#0D1117',
+    borderColor: '#30363D',
+    color: '#C9D1D9',
+    minWidth: '200px',
+    minHeight: `${CONTROL_HEIGHT}px`,
+    maxHeight: `${CONTROL_HEIGHT}px`,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
+  }),
+  menu: (provided) => ({
+    ...provided,
+    backgroundColor: '#161B22',
+    width: '100%',
+    maxWidth: '100%',
+  }),
+  menuList: (provided) => ({
+    ...provided,
+    maxHeight: '280px',
+    overflowY: 'auto',
+  }),
+  option: (provided, state) => ({
+    ...provided,
+    backgroundColor: state.isSelected ? '#58A6FF' : state.isFocused ? '#30363D' : '#161B22',
+    color: '#C9D1D9',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  }),
+  multiValue: (provided) => ({ ...provided, backgroundColor: '#30363D', margin: '2px 4px 2px 0' }),
+  multiValueLabel: (provided) => ({
+    ...provided,
+    color: '#C9D1D9',
+    maxWidth: '140px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  }),
+  singleValue: (provided) => ({
+    ...provided,
+    maxWidth: '160px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  }),
+  valueContainer: (provided) => ({
+    ...provided,
+    maxHeight: `${CONTROL_HEIGHT - 6}px`,
+    overflowY: 'auto',
+    paddingTop: 2,
+    paddingBottom: 2,
+  }),
   input: (provided) => ({ ...provided, color: '#C9D1D9' }),
   placeholder: (provided) => ({ ...provided, color: '#8B949E' })
 };
@@ -63,6 +113,7 @@ const BubbleChartFilters = ({
             }}
             onMenuOpen={markMenuOpen('types')}
             onMenuClose={markMenuClose('types')}
+            classNamePrefix="cf-select"
             styles={selectStyles}
             placeholder="Todos os Tipos"
         />
@@ -87,6 +138,7 @@ const BubbleChartFilters = ({
             }}
             onMenuOpen={markMenuOpen('focuses')}
             onMenuClose={markMenuClose('focuses')}
+            classNamePrefix="cf-select"
             styles={selectStyles}
             placeholder="Todos os Focos"
         />
