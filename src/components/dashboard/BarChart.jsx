@@ -13,12 +13,14 @@ const BarChart = ({ statusData }) => {
 
     const containerRef = useRef(null);
     const [chartHeight, setChartHeight] = useState(0);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     useEffect(() => {
         const node = containerRef.current;
         if (!node) return undefined;
 
         const updateHeight = () => {
+            if (isFullscreen) return;
             const nextHeight = node.clientHeight || 0;
             if (nextHeight && nextHeight !== chartHeight) {
                 setChartHeight(nextHeight);
@@ -31,7 +33,7 @@ const BarChart = ({ statusData }) => {
         observer.observe(node);
 
         return () => observer.disconnect();
-    }, [chartHeight]);
+    }, [chartHeight, isFullscreen]);
 
     const { total_pledge, total_deposit, total_approval } = statusData;
     const colors = Highcharts.getOptions().colors;
@@ -47,8 +49,24 @@ const BarChart = ({ statusData }) => {
     const options = {
         chart: {
             type: 'bar',
-            height: chartHeight || null,
+            height: isFullscreen ? null : (chartHeight || null),
             events: {
+                fullscreenOpen() {
+                    setIsFullscreen(true);
+                    this.update({ chart: { height: null } }, false);
+                    setTimeout(() => {
+                        this.setSize(null, null, false);
+                        this.reflow();
+                    }, 0);
+                },
+                fullscreenClose() {
+                    setIsFullscreen(false);
+                    this.update({ chart: { height: chartHeight || null } }, false);
+                    setTimeout(() => {
+                        this.setSize(null, chartHeight || null, false);
+                        this.reflow();
+                    }, 0);
+                },
                 render() {
                     const btn = this.container?.querySelector('.highcharts-contextbutton');
                     if (btn) {
