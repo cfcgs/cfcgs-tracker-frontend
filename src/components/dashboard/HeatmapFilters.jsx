@@ -34,8 +34,6 @@ const selectStyles = {
         ...provided,
         backgroundColor: '#161B22', // dark-card
         zIndex: 50,
-        width: '100%',
-        maxWidth: '100%',
     }),
     menuList: (provided) => ({
         ...provided,
@@ -45,8 +43,6 @@ const selectStyles = {
     menuPortal: (provided) => ({
         ...provided,
         zIndex: 9999,
-        width: '100%',
-        maxWidth: '100%',
     }),
     option: (provided, state) => ({
         ...provided,

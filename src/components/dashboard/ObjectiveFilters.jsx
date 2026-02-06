@@ -24,8 +24,6 @@ const selectStyles = {
   menu: (provided) => ({
     ...provided,
     backgroundColor: '#161B22',
-    width: '100%',
-    maxWidth: '100%',
   }),
   menuList: (provided) => ({
     ...provided,
