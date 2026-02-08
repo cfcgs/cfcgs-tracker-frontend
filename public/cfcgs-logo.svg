@@ -1,0 +1,67 @@
+<svg width="512" height="512" viewBox="0 0 512 512"
+     xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Círculo externo -->
+  <circle cx="256" cy="256" r="230"
+          fill="none"
+          stroke="#58A6FF"
+          stroke-width="16"/>
+
+  <!-- Raios superiores (árvore / energia climática) -->
+  <g fill="#58A6FF">
+    <rect x="244" y="80" width="24" height="130" rx="12"/>
+    <rect x="170" y="105" width="24" height="130" rx="12"
+          transform="rotate(-25 170 105)"/>
+    <rect x="318" y="105" width="24" height="130" rx="12"
+          transform="rotate(25 318 105)"/>
+    <rect x="110" y="145" width="24" height="120" rx="12"
+          transform="rotate(-45 110 145)"/>
+    <rect x="378" y="145" width="24" height="120" rx="12"
+          transform="rotate(45 378 145)"/>
+  </g>
+
+  <!-- Tronco da árvore -->
+  <path d="
+    M256 220
+    C230 250, 220 300, 220 360
+    L220 410
+    C220 430, 292 430, 292 410
+    L292 360
+    C292 300, 282 250, 256 220
+    Z"
+    fill="#58A6FF"/>
+
+  <!-- Camadas laterais -->
+  <g fill="#58A6FF">
+    <rect x="120" y="300" width="100" height="12" rx="6"/>
+    <rect x="130" y="325" width="90" height="12" rx="6"/>
+    <rect x="140" y="350" width="80" height="12" rx="6"/>
+
+    <rect x="292" y="300" width="100" height="12" rx="6"/>
+    <rect x="292" y="325" width="90" height="12" rx="6"/>
+    <rect x="292" y="350" width="80" height="12" rx="6"/>
+  </g>
+
+  <!-- Rede de dados / IA -->
+  <g stroke="#FFFFFF" stroke-width="2" opacity="0.9">
+    <line x1="200" y1="260" x2="160" y2="240"/>
+    <line x1="312" y1="260" x2="352" y2="240"/>
+    <line x1="256" y1="230" x2="256" y2="190"/>
+  </g>
+
+  <g fill="#FFFFFF">
+    <circle cx="160" cy="240" r="5"/>
+    <circle cx="200" cy="260" r="5"/>
+    <circle cx="312" cy="260" r="5"/>
+    <circle cx="352" cy="240" r="5"/>
+    <circle cx="256" cy="190" r="6"/>
+  </g>
+
+  <!-- Brilho / Insight de IA -->
+  <g stroke="#FFFFFF" stroke-width="3">
+    <line x1="256" y1="60" x2="256" y2="40"/>
+    <line x1="246" y1="70" x2="230" y2="55"/>
+    <line x1="266" y1="70" x2="282" y2="55"/>
+  </g>
+
+</svg>
