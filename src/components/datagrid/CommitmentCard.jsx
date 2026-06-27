@@ -33,13 +33,13 @@ const CommitmentCard = ({ year }) => {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
         // Simplesmente abre a URL do novo endpoint de exportação.
         // O navegador cuidará do download automaticamente.
-        window.location.href = `${API_BASE_URL}/commitments/export/${year}`;
+        window.location.href = `${API_BASE_URL}/records/export/${year}`;
     };
 
     return (
         <div className="bg-dark-card border border-dark-border rounded-xl p-4 flex flex-col">
             <div className="flex justify-between items-center mb-4">
-                <h4 className="text-xl font-semibold text-dark-text">Compromissos de {year}</h4>
+                <h4 className="text-xl font-semibold text-dark-text">Registros de {year}</h4>
                 <button 
                     onClick={exportToCsv}
                     className="bg-accent-blue text-white px-3 py-1 rounded-md flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -56,7 +56,7 @@ const CommitmentCard = ({ year }) => {
                             <tr>
                                 <th className="px-4 py-2">Projeto (Prévia)</th>
                                 <th className="px-4 py-2">País Receptor</th>
-                                <th className="px-4 py-2 text-right">Valor (USD K)</th>
+                                <th className="px-4 py-2 text-right">Valor (USD mi)</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-border">
@@ -64,7 +64,7 @@ const CommitmentCard = ({ year }) => {
                                 <tr key={c.id} className="hover:bg-gray-700/20">
                                     <td className="px-4 py-2 truncate" title={c.project}>{c.project || '-'}</td>
                                     <td className="px-4 py-2">{c.recipient_country || '-'}</td>
-                                    <td className="px-4 py-2 text-right">{c.amount_usd_thousand.toLocaleString('en-US')}</td>
+                                    <td className="px-4 py-2 text-right">{(c.amount_usd_millions ?? 0).toLocaleString('en-US')}</td>
                                 </tr>
                             ))}
                         </tbody>

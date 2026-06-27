@@ -1,15 +1,16 @@
 import React from 'react';
-import { FiGrid, FiBarChart2, FiCircle, FiTable, FiUpload, FiMessageSquare } from 'react-icons/fi';
+import { FiGrid, FiMessageSquare, FiShield, FiTable } from 'react-icons/fi';
 
-const SideNav = ({ activeView, onNavChange, footer }) => {
+const SideNav = ({ activeView, onNavChange, footer, showAdminEntry = false }) => {
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <FiGrid />, tour: 'nav-dashboard' },
         { id: 'datagrid', label: 'Tabelas Completas', icon: <FiTable />, tour: 'nav-datagrid' },
-        // { id: 'reports', label: 'Relatórios', icon: <FiBarChart2 /> },
-        // { id: 'funds', label: 'Fundos', icon: <FiCircle /> },
         { id: 'chatbot', label: 'Assistente IA', icon: <FiMessageSquare />, tour: 'nav-chatbot' },
-        // { id: 'upload', label: 'Upload de Dados', icon: <FiUpload /> },
     ];
+
+    if (showAdminEntry) {
+        navItems.push({ id: 'admin', label: 'Gestão da Plataforma', icon: <FiShield />, tour: 'nav-admin' });
+    }
 
     return (
         <nav className="w-64 h-screen sticky top-0 bg-dark-card border-r border-dark-border p-4 flex flex-col">
@@ -23,10 +24,9 @@ const SideNav = ({ activeView, onNavChange, footer }) => {
                             href="#"
                             onClick={(e) => { e.preventDefault(); onNavChange(item.id); }}
                             className={`flex items-center p-3 rounded-lg transition-colors
-                                ${activeView === item.id 
-                                    ? 'bg-accent-blue text-white' 
-                                    : 'text-dark-text-secondary hover:bg-gray-700 hover:text-white'}`
-                            }
+                                ${activeView === item.id
+                                    ? 'bg-accent-blue text-white'
+                                    : 'text-dark-text-secondary hover:bg-gray-700 hover:text-white'}`}
                             data-tour={item.tour}
                         >
                             <span className="mr-3 text-xl">{item.icon}</span>

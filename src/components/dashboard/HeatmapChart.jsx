@@ -625,6 +625,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
             const response = await getHeatmapCellProjects({
                 year: tooltip.cell.year,
                 countryId: tooltip.cell.country_id,
+                projectIds,
                 objective,
                 limit: PROJECT_PAGE_SIZE,
                 offset,
@@ -651,7 +652,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                 error: fetchError?.message || 'Falha ao carregar projetos.',
             }));
         }
-    }, [objective, tooltip, tooltipKey]);
+    }, [objective, projectIds, tooltip, tooltipKey]);
 
     const handleProjectListToggle = useCallback((event) => {
         if (event?.stopPropagation) {
@@ -2011,7 +2012,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                             {tooltip.cell.country_name} • {tooltip.cell.year}
                         </div>
                         <div className="mt-1 text-dark-text-secondary">
-                            Total doado: <span className="text-dark-text">{formatNumber(tooltip.cell.total_amount)} K USD</span>
+                            Total doado: <span className="text-dark-text">{formatNumber(tooltip.cell.total_amount)} USD mi</span>
                         </div>
                         <div className="mt-2 grid grid-cols-3 gap-2">
                             <div className="bg-dark-bg/60 rounded-md p-2">
@@ -2081,7 +2082,7 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
                                                     {formatObjective(project.objective)}
                                                 </span>
                                                 <span className="text-[10px] text-dark-text-secondary">
-                                                    {formatNumber(project.total_amount)} K USD
+                                                    {formatNumber(project.total_amount)} USD mi
                                                 </span>
                                             </div>
                                         </div>

@@ -6,7 +6,10 @@ import SideNav from './components/SideNav';
 import DashboardPage from './pages/DashboardPage';
 import DataGridPage from './pages/DataGridPage';
 import ChatbotPage from './pages/ChatbotPage';
-import { FiCompass, FiPause, FiPlay, FiX } from 'react-icons/fi';
+import AdminPage from './pages/AdminPage';
+import AdminLoginModal from './components/admin/AdminLoginModal';
+import { FiCompass, FiPause, FiPlay, FiShield, FiUser, FiX } from 'react-icons/fi';
+import { getCurrentUser, login, logout } from './services/api';
 
 import EcoBotSaudando from './images/EcoBotSaudando.png';
 import EcoBotExplicando from './images/EcoBotExplicando.png';
@@ -25,10 +28,17 @@ const VIEW_LABELS = {
     dashboard: 'Dashboard',
     chatbot: 'Assistente IA',
     datagrid: 'Tabelas completas',
+    admin: 'Gestão da Plataforma',
 };
 
 function App() {
     const [activeView, setActiveView] = useState('dashboard');
+    const [currentUser, setCurrentUser] = useState(null);
+    const [authLoading, setAuthLoading] = useState(true);
+    const [loginModalOpen, setLoginModalOpen] = useState(false);
+    const [loginError, setLoginError] = useState('');
+    const [loginSubmitting, setLoginSubmitting] = useState(false);
+    const [adminInitialTab, setAdminInitialTab] = useState('imports');
     const tutorialEnabled = parseEnvFlag(import.meta.env.VITE_TUTORIAL_ENABLED);
     const [tourActive, setTourActive] = useState(false);
     const [tourVisible, setTourVisible] = useState(false);
@@ -52,6 +62,66 @@ function App() {
             img.src = src;
         });
     }, []);
+
+    useEffect(() => {
+        const bootstrapAuth = async () => {
+            try {
+                const user = await getCurrentUser();
+                setCurrentUser(user);
+            } catch (error) {
+                setCurrentUser(null);
+            } finally {
+                setAuthLoading(false);
+            }
+        };
+
+        bootstrapAuth();
+    }, []);
+
+    const handleLoginSubmit = useCallback(async ({ username, password }) => {
+        setLoginSubmitting(true);
+        setLoginError('');
+        try {
+            await login({ username, password });
+            const user = await getCurrentUser();
+            setCurrentUser(user);
+            setLoginModalOpen(false);
+            setLoginError('');
+            setAdminInitialTab('imports');
+            setActiveView('admin');
+        } catch (error) {
+            setLoginError(error?.response?.data?.detail || 'Falha ao autenticar.');
+        } finally {
+            setLoginSubmitting(false);
+        }
+    }, []);
+
+    const handleLogout = useCallback(() => {
+        logout();
+        setCurrentUser(null);
+        setActiveView('dashboard');
+    }, []);
+
+    const handleCurrentUserRoleChanged = useCallback((message = 'Sua sessão precisa ser renovada. Faça login novamente para continuar.') => {
+        setCurrentUser(null);
+        setLoginModalOpen(true);
+        setLoginError(message);
+        setActiveView('dashboard');
+    }, []);
+
+    const handleCurrentUserUpdated = useCallback((user) => {
+        setCurrentUser(user);
+    }, []);
+
+    const handleAdminAccess = useCallback(() => {
+        if (currentUser) {
+            setAdminInitialTab('imports');
+            setActiveView('admin');
+            return;
+        }
+        setLoginError('');
+        setLoginModalOpen(true);
+    }, [currentUser]);
 
     const tourSteps = useMemo(() => ([
         {
@@ -609,6 +679,8 @@ function App() {
                 return <UploadPage />;
             case 'chatbot':
                 return <ChatbotPage />;
+            case 'admin':
+                return <AdminPage currentUser={currentUser} onLoginRequest={handleAdminAccess} onCurrentUserRoleChanged={handleCurrentUserRoleChanged} onCurrentUserUpdated={handleCurrentUserUpdated} initialTab={adminInitialTab} />;
             default:
                 return <DashboardPage />;
         }
@@ -649,7 +721,14 @@ function App() {
         <div className="relative flex min-h-screen bg-dark-bg text-dark-text">
             <SideNav
                 activeView={activeView}
-                onNavChange={setActiveView}
+                onNavChange={(view) => {
+                    if (view === 'admin' && !currentUser) {
+                        handleAdminAccess();
+                        return;
+                    }
+                    setActiveView(view);
+                }}
+                showAdminEntry={Boolean(currentUser)}
                 footer={
                     tutorialEnabled ? (
                         <button
@@ -667,6 +746,51 @@ function App() {
             <main ref={mainRef} className="flex-1 overflow-y-auto">
                 {renderActiveView()}
             </main>
+
+            <div className="fixed right-6 top-6 z-[80] flex items-center gap-3">
+                {currentUser ? (
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setAdminInitialTab('profile');
+                                setActiveView('admin');
+                            }}
+                            className="hidden rounded-full border border-dark-border bg-dark-card/95 px-4 py-2 text-left text-sm text-dark-text shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:border-accent-blue/30 hover:bg-dark-card md:flex md:items-center md:gap-3"
+                        >
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent-blue text-white">
+                                <FiUser />
+                            </span>
+                            <div>
+                                <div className="font-semibold text-dark-text">{currentUser.email}</div>
+                                <div className="text-xs uppercase tracking-[0.12em] text-dark-text-secondary">{currentUser.role}</div>
+                            </div>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleAdminAccess}
+                            className="inline-flex items-center gap-2 rounded-full border border-accent-blue/30 bg-dark-card/95 px-4 py-3 text-sm font-semibold text-accent-blue shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:bg-dark-card"
+                        >
+                            <FiShield /> Gestão
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-dark-card/95 px-4 py-3 text-sm font-semibold text-dark-text-secondary shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:text-dark-text"
+                        >
+                            Sair
+                        </button>
+                    </>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={handleAdminAccess}
+                        className="inline-flex items-center gap-2 rounded-full border border-accent-blue/30 bg-dark-card/95 px-4 py-3 text-sm font-semibold text-accent-blue shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:bg-dark-card"
+                    >
+                        <FiShield /> Gestão
+                    </button>
+                )}
+            </div>
 
             {tourCompleted && activeView === 'dashboard' && import.meta.env.VITE_EVALUATION_FORM_URL && (
                 <button
@@ -813,6 +937,13 @@ function App() {
                     </div>
                 </>
             )}
+            <AdminLoginModal
+                open={loginModalOpen}
+                onClose={() => setLoginModalOpen(false)}
+                onSubmit={handleLoginSubmit}
+                loading={loginSubmitting || authLoading}
+                error={loginError}
+            />
         </div>
     );
 }

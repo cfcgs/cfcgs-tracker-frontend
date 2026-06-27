@@ -66,7 +66,7 @@ const selectStyles = {
 };
 
 const BarChartFilters = ({
-    allFunds,
+    allFundingProviders,
     allFundTypes,
     allFundFocuses,
     selectedTypes,
@@ -93,14 +93,14 @@ const BarChartFilters = ({
             }));
         }
     };
-    const fundOptions = allFunds.map(fund => ({ value: fund.id, label: fund.fund_name }));
+    const fundOptions = allFundingProviders.map(fund => ({ value: fund.id, label: fund.funding_provider_name }));
     const typeOptions = allFundTypes.map(type => ({ value: type.id, label: type.name }));
     const focusOptions = allFundFocuses.map(focus => ({ value: focus.id, label: focus.name }));
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4" data-tour="status-filters">
              <div className="flex-1">
-                <label className="block text-sm font-medium text-dark-text-secondary mb-1">Fundos</label>
+                <label className="block text-sm font-medium text-dark-text-secondary mb-1">Provedores</label>
                 <Select
                     isMulti
                     options={fundOptions}
@@ -121,7 +121,7 @@ const BarChartFilters = ({
                     onMenuClose={markMenuClose('funds')}
                     classNamePrefix="cf-select"
                     styles={selectStyles}
-                    placeholder="Todos os Fundos"
+                    placeholder="Todos os Provedores"
                 />
             </div>
             <div className="flex-1">

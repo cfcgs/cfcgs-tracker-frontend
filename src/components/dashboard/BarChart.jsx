@@ -102,7 +102,7 @@ const BarChart = ({ statusData }) => {
             }
         },
         title: {
-            text: 'Status Financeiro dos Fundos' // Traduzido
+            text: 'Status Financeiro dos Provedores' // Traduzido
         },
         xAxis: {
             // Categorias traduzidas

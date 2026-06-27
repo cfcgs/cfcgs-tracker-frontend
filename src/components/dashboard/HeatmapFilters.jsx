@@ -216,7 +216,11 @@ const HeatmapFilters = ({
     const loadProjectOptions = async (search, loadedOptions, additional) => {
         const result = await loadPaginatedProjects(search, loadedOptions, {
             ...additional,
-            filters: {},
+            filters: {
+                years: selectedYears,
+                countryIds: selectedCountryIds,
+                objective: selectedObjective,
+            },
         });
         result.options?.forEach((opt) => {
             projectOptionCacheRef.current.set(opt.value, opt.label);

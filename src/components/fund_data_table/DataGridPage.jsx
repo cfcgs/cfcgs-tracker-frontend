@@ -1,7 +1,7 @@
 // src/components/DataTablePage.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
-import { getFundsData } from '../../services/api';
+import { getFundingProvidersData } from '../../services/api';
 import DataGrid from './DataGrid'; // O seu componente que usa @highcharts/grid-lite
 
 // Importações para exportação
@@ -23,8 +23,8 @@ const DataTablePage = () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await getFundsData(null, 500); // Busca mais dados
-        setTableData(data || []);
+        const data = await getFundingProvidersData({}); // Busca mais dados
+        setTableData(data.fundingProviders || []);
       } catch (err) {
         setError('Falha ao carregar os dados da tabela.');
         console.error(err);
@@ -52,7 +52,7 @@ const DataTablePage = () => {
     if (table) {
       const doc = new jsPDF();
       autoTable(doc, { html: table });
-      doc.save('tabela-fundos.pdf');
+      doc.save('tabela-provedores-financiamento.pdf');
     } else {
       alert("Tabela não encontrada para exportar para PDF.");
     }
@@ -67,7 +67,7 @@ const DataTablePage = () => {
       const elementToCapture = gridWrapperRef.current || tableElement;
       html2canvas(elementToCapture).then(canvas => {
         const link = document.createElement('a');
-        link.download = `tabela-fundos.${format}`;
+        link.download = `tabela-provedores-financiamento.${format}`;
         link.href = canvas.toDataURL(`image/${format}`, 1.0);
         link.click();
       });
@@ -95,14 +95,14 @@ const DataTablePage = () => {
     }
 
     const headers = [
-      'Fund Name', 'Type', 'Focus', 'Pledge (USD)', 'Disbursement (USD)',
+      'Funding Provider', 'Type', 'Focus', 'Pledge (USD)', 'Disbursement (USD)',
       'Deposit (USD)', 'Approval (USD)', 'Approved Projects'
     ];
     const csvRows = [headers.join(',')]; // Linha do cabeçalho
 
     tableData.forEach(fund => {
       const row = [
-        escapeCsvCell(fund.fund_name),
+        escapeCsvCell(fund.funding_provider_name),
         escapeCsvCell(fund.fund_type),
         escapeCsvCell(fund.fund_focus),
         escapeCsvCell(fund.pledge),
@@ -119,7 +119,7 @@ const DataTablePage = () => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', 'tabela-fundos.csv');
+    link.setAttribute('download', 'tabela-provedores-financiamento.csv');
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -131,7 +131,7 @@ const DataTablePage = () => {
     <div className="table-page-container"> {/* O seu contentor de 70% centralizado */}
       <div className="flex justify-between items-center mb-6">
         <div className="table-title">
-          <h2 className="text-2xl font-bold text-gray-800">Funds Detail Table</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Tabela Detalhada de Provedores de Financiamento</h2>
         </div>
       </div>
       

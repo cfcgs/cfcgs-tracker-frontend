@@ -122,3 +122,349 @@ body {
 .animate-tour-drop {
     animation: tourDrop 220ms ease-out both;
 }
+
+
+.admin-hero-card {
+    @apply relative overflow-hidden rounded-2xl border border-dark-border bg-dark-card p-6 shadow-[0_18px_60px_rgba(0,0,0,0.35)];
+    background-image:
+        radial-gradient(circle at top right, rgba(88, 166, 255, 0.16), transparent 34%),
+        linear-gradient(160deg, rgba(22, 27, 34, 0.98), rgba(13, 17, 23, 0.98));
+}
+
+.admin-hero-badge {
+    @apply inline-flex items-center gap-2 rounded-full border border-accent-blue/30 bg-accent-blue/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-accent-blue;
+}
+
+.admin-kpi-chip-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-3;
+}
+
+.admin-kpi-chip {
+    @apply min-w-[160px] rounded-2xl border border-dark-border bg-dark-bg/80 px-4 py-3;
+}
+
+.admin-kpi-chip-button {
+    @apply transition hover:border-accent-blue/30 hover:bg-white/[0.03];
+}
+
+.admin-kpi-chip span {
+    @apply block text-xs uppercase tracking-[0.14em] text-dark-text-secondary;
+}
+
+.admin-kpi-chip strong {
+    @apply mt-2 block text-base font-semibold text-dark-text;
+}
+
+.admin-tabs-bar {
+    @apply flex flex-wrap gap-3;
+}
+
+.admin-tab-button {
+    @apply rounded-full border border-dark-border bg-dark-card px-4 py-2 text-sm font-medium text-dark-text-secondary transition;
+}
+
+.admin-tab-button.is-active {
+    @apply border-accent-blue/40 bg-accent-blue text-white shadow-[0_10px_24px_rgba(88,166,255,0.22)];
+}
+
+.admin-section-card {
+    @apply rounded-2xl border border-dark-border bg-dark-card p-5 shadow-[0_16px_48px_rgba(0,0,0,0.28)];
+}
+
+.admin-section-title {
+    @apply text-xl font-semibold text-dark-text;
+}
+
+.admin-section-subtitle {
+    @apply mt-1 text-sm text-dark-text-secondary;
+}
+
+.admin-dropzone {
+    @apply mt-6 flex min-h-[280px] cursor-pointer flex-col items-center justify-center gap-5 rounded-2xl border border-dashed border-dark-border bg-dark-bg/70 px-6 py-8 transition;
+}
+
+.admin-dropzone.is-active {
+    @apply border-accent-blue bg-accent-blue/10 shadow-[inset_0_0_0_1px_rgba(88,166,255,0.28)];
+}
+
+.admin-dropzone.is-disabled {
+    @apply cursor-wait opacity-80;
+}
+
+.admin-primary-button {
+    @apply inline-flex items-center gap-2 rounded-full bg-accent-blue px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(88,166,255,0.25)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.admin-ghost-button {
+    @apply inline-flex items-center gap-2 rounded-full border border-dark-border bg-dark-bg px-4 py-2 text-sm font-medium text-dark-text-secondary transition hover:border-accent-blue/30 hover:text-dark-text;
+}
+
+.admin-feedback {
+    @apply mt-4 inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm;
+    animation: evalPop 220ms ease-out both;
+}
+
+.admin-feedback.is-success {
+    @apply border-emerald-500/30 bg-emerald-500/10 text-emerald-200;
+}
+
+.admin-feedback.is-error {
+    @apply border-rose-500/30 bg-rose-500/10 text-rose-200;
+}
+
+.admin-search-input,
+.admin-form-input,
+.admin-table-input {
+    @apply w-full rounded-xl border border-dark-border bg-dark-bg px-3 py-2 text-sm text-dark-text outline-none transition placeholder:text-dark-text-secondary/70 focus:border-accent-blue/50 focus:ring-2 focus:ring-accent-blue/20;
+}
+
+.admin-form-input-with-icon {
+    @apply pr-11;
+}
+
+.admin-form-input-with-status {
+    @apply pr-20;
+}
+
+.admin-password-field {
+    @apply relative;
+}
+
+.admin-password-toggle {
+    @apply absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-dark-text-secondary transition hover:bg-white/5 hover:text-dark-text;
+}
+
+.admin-password-toggle-secondary {
+    @apply right-11;
+}
+
+.admin-password-match-icon {
+    @apply absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-dark-text-secondary;
+}
+
+.admin-password-match-icon.is-match {
+    @apply text-emerald-300;
+}
+
+.admin-password-match-icon.is-mismatch {
+    @apply text-rose-300;
+}
+
+.admin-form-panel {
+    @apply rounded-2xl border border-dark-border bg-dark-bg/60 p-4;
+}
+
+.admin-table-shell {
+    @apply overflow-hidden rounded-2xl border border-dark-border bg-dark-bg/60;
+}
+
+.admin-table-scroll {
+    @apply overflow-auto;
+}
+
+.admin-table {
+    @apply min-w-full table-fixed border-collapse;
+}
+
+.admin-table thead th {
+    @apply sticky top-0 z-10 border-b border-dark-border bg-dark-card/95 px-3 py-3 text-left align-top backdrop-blur;
+}
+
+.admin-table tbody td {
+    @apply overflow-hidden border-b border-dark-border/80 px-3 py-2 align-top text-sm text-dark-text-secondary;
+}
+
+.admin-table tbody tr:hover td {
+    @apply bg-white/[0.02];
+}
+
+.admin-table tbody tr.is-dirty td {
+    @apply bg-accent-blue/[0.05];
+}
+
+.admin-table-head-cell {
+    @apply relative flex items-start justify-between gap-2;
+}
+
+.admin-table-head-tools {
+    @apply relative z-20 flex shrink-0 items-center gap-2;
+}
+
+.admin-table-sort {
+    @apply flex min-w-0 items-center gap-2 text-left text-xs font-semibold uppercase tracking-[0.12em] text-dark-text;
+}
+
+.admin-table-sort.is-sortable:hover {
+    @apply text-accent-blue;
+}
+
+.admin-table-filter-trigger {
+    @apply inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-dark-border bg-dark-bg px-2 text-dark-text-secondary transition hover:border-accent-blue/30 hover:text-dark-text;
+}
+
+.admin-table-filter-trigger.is-active {
+    @apply border-accent-blue/40 bg-accent-blue/10 text-accent-blue;
+}
+
+.admin-table-filter-count {
+    @apply ml-1 text-[10px] font-semibold;
+}
+
+.admin-table-filter-popover {
+    @apply absolute right-0 top-10 z-30 flex w-72 flex-col gap-3 rounded-2xl border border-dark-border bg-dark-card p-3 shadow-[0_18px_48px_rgba(0,0,0,0.45)];
+}
+
+.admin-table-filter-search {
+    @apply flex items-center gap-2 rounded-xl border border-dark-border bg-dark-bg px-3 py-2 text-sm text-dark-text-secondary;
+}
+
+.admin-table-filter-search-input {
+    @apply w-full bg-transparent text-sm text-dark-text outline-none placeholder:text-dark-text-secondary/70;
+}
+
+.admin-table-filter-actions {
+    @apply flex items-center justify-between gap-3;
+}
+
+.admin-table-filter-action {
+    @apply text-xs font-semibold uppercase tracking-[0.12em] text-dark-text-secondary transition hover:text-accent-blue;
+}
+
+.admin-table-filter-options {
+    @apply max-h-64 overflow-auto pr-1;
+}
+
+.admin-table-filter-option {
+    @apply flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-dark-text-secondary transition hover:bg-white/[0.03] hover:text-dark-text;
+}
+
+.admin-table-filter-option input {
+    accent-color: #58a6ff;
+}
+
+.admin-table-filter-option span {
+    @apply block overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.admin-table-filter-empty {
+    @apply rounded-xl bg-dark-bg/70 px-3 py-4 text-center text-sm text-dark-text-secondary;
+}
+
+.admin-table-resizer {
+    @apply absolute right-[-6px] top-[-8px] h-[calc(100%+16px)] w-3 cursor-col-resize;
+}
+
+.admin-table-actions-head {
+    @apply min-w-0;
+}
+
+.admin-table-actions {
+    @apply bg-dark-bg/95 backdrop-blur;
+}
+
+.admin-table-empty,
+.admin-table-loading {
+    @apply px-4 py-6 text-center text-sm text-dark-text-secondary;
+}
+
+.admin-inline-action {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-xl border border-dark-border bg-dark-card text-dark-text-secondary transition hover:text-dark-text;
+}
+
+.admin-inline-action.is-primary {
+    @apply border-accent-blue/40 bg-accent-blue text-white;
+}
+
+.admin-inline-action.is-warning {
+    @apply border-amber-500/30 bg-amber-500/10 text-amber-200;
+}
+
+.admin-inline-action.is-danger {
+    @apply border-rose-500/30 bg-rose-500/10 text-rose-200;
+}
+
+.admin-inline-action.is-muted {
+    @apply opacity-50;
+}
+
+.admin-hash-cell {
+    @apply block overflow-hidden text-ellipsis whitespace-nowrap font-mono text-xs text-dark-text-secondary;
+}
+
+.admin-modal-backdrop {
+    @apply fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm;
+}
+
+.admin-modal-card {
+    @apply w-full max-w-lg rounded-3xl border border-dark-border bg-dark-card p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)];
+    background-image:
+        radial-gradient(circle at top right, rgba(88, 166, 255, 0.12), transparent 32%),
+        linear-gradient(160deg, rgba(22, 27, 34, 1), rgba(13, 17, 23, 1));
+}
+
+
+.admin-static-field {
+    @apply rounded-xl border border-dark-border bg-dark-bg px-3 py-2 text-sm text-dark-text;
+}
+
+
+.admin-modal-card-wide {
+    @apply max-w-2xl;
+}
+
+.admin-password-status {
+    @apply inline-flex items-center gap-2 rounded-2xl border border-dark-border bg-dark-bg px-4 py-3 text-sm text-dark-text-secondary;
+}
+
+.admin-password-status.is-match {
+    @apply border-emerald-500/30 bg-emerald-500/10 text-emerald-200;
+}
+
+.admin-password-status.is-mismatch {
+    @apply border-rose-500/30 bg-rose-500/10 text-rose-200;
+}
+
+.admin-table-actions-head,
+.admin-table-actions {
+    @apply text-right;
+}
+
+.admin-table-head-cell-inline {
+    @apply flex-col items-stretch gap-3;
+}
+
+.admin-table-inline-filter {
+    @apply relative z-20 flex flex-col gap-2;
+}
+
+.admin-table-filter-selected {
+    @apply flex flex-wrap items-center gap-2;
+}
+
+.admin-table-filter-chip {
+    @apply inline-flex max-w-full items-center gap-2 rounded-full border border-accent-blue/30 bg-accent-blue/10 px-3 py-1 text-[11px] font-medium text-accent-blue;
+}
+
+.admin-table-filter-chip span:first-child {
+    @apply max-w-[140px] overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.admin-table-filter-clear-inline {
+    @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-dark-text-secondary transition hover:text-accent-blue;
+}
+
+.admin-table-suggestions-panel {
+    @apply absolute left-0 right-0 top-full z-40 mt-2 flex flex-col gap-2 rounded-2xl border border-dark-border bg-dark-card p-3 shadow-[0_18px_48px_rgba(0,0,0,0.45)];
+}
+
+.admin-table-suggestions-more {
+    @apply rounded-xl border border-dark-border bg-dark-bg px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-dark-text-secondary transition hover:border-accent-blue/30 hover:text-dark-text disabled:cursor-wait disabled:opacity-60;
+}
+
+.admin-table-filter-option.is-selected {
+    @apply border border-accent-blue/30 bg-accent-blue/10 text-accent-blue;
+}
+
+.admin-table-filter-selected-group {
+    @apply mb-2 flex flex-col gap-1 border-b border-dark-border pb-2;
+}

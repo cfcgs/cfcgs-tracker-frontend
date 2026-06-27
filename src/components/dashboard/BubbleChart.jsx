@@ -6,7 +6,7 @@ import "highcharts/highcharts-more";
 import "highcharts/modules/exporting";
 import "highcharts/modules/offline-exporting";
 
-const BubbleChart = ({ fundsData }) => {
+const BubbleChart = ({ fundingProvidersData }) => {
   const containerRef = useRef(null);
   const [chartHeight, setChartHeight] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -33,8 +33,8 @@ const BubbleChart = ({ fundsData }) => {
 
   // Process data for the bubble chart
   const processData = () => {
-    return fundsData.map(fund => ({
-      name: fund.fund_name,
+    return fundingProvidersData.map(fund => ({
+      name: fund.funding_provider_name,
       x: fund.projects_approved,
       y: fund.disbursement,
       z: fund.pledge,
@@ -102,7 +102,7 @@ const BubbleChart = ({ fundsData }) => {
       }
     },
     title: {
-      text: 'Visão Geral dos Fundos Climáticos' // Traduzido
+      text: 'Visão Geral dos Provedores de Financiamento Climático' // Traduzido
     },
     subtitle: {
       text: 'O tamanho da bolha representa o valor da promessa (Pledge) em Milhões de USD' // Traduzido

@@ -21,8 +21,8 @@ if (darkTheme) {
 
 // Importe as funções da API (antigas e novas)
 import {
-    getFundsData, getFundTypes, getFundFocuses, getFundStatusData,
-    getRecipientCountries, getTotalsByObjective,
+    getFundingProvidersData, getFundTypes, getFundFocuses, getFundingProviderSummaryData,
+    getBeneficiaryCountries, getTotalsByObjective,
     getCommitmentTimeSeries, getAvailableYears, getHeatmapFilterOptions,
     // --- Novas funções ---
     getHeatmapKpis,
@@ -85,14 +85,10 @@ const ChartCard = ({
 );
 
 const DATA_SOURCES = {
-    cfu: {
+    cfu: [{
         label: 'Climate Funds Update (CFU)',
         url: 'https://climatefundsupdate.org/data-dashboard/',
-    },
-    oecd: {
-        label: 'OECD (Organisation for Economic Co-operation and Development)',
-        url: 'https://www.oecd.org/en.html',
-    },
+    }],
 };
 
 const DashboardPage = () => {
@@ -105,6 +101,10 @@ const DashboardPage = () => {
     const [heatmapAvailableYears, setHeatmapAvailableYears] = useState(null);
     const [heatmapAvailableCountries, setHeatmapAvailableCountries] = useState(null);
     const [heatmapAvailableObjectives, setHeatmapAvailableObjectives] = useState(null);
+    const [commitmentFilterYears, setCommitmentFilterYears] = useState([]);
+    const [commitmentFilterCountries, setCommitmentFilterCountries] = useState([]);
+    const [objectiveFilterYears, setObjectiveFilterYears] = useState([]);
+    const [objectiveFilterCountries, setObjectiveFilterCountries] = useState([]);
     const [loadingFilters, setLoadingFilters] = useState(true); // Renomeado de 'loading'
     const [globalError, setGlobalError] = useState(null); // Renomeado de 'error'
 
@@ -143,6 +143,11 @@ const DashboardPage = () => {
     const [bubbleChartData, setBubbleChartData] = useState([]);
     const [barChartData, setBarChartData] = useState(null); // <-- Estado APENAS para o gráfico de barras
     const [objectiveTotals, setObjectiveTotals] = useState([]);
+    const [heatmapSources, setHeatmapSources] = useState([]);
+    const [bubbleSources, setBubbleSources] = useState(DATA_SOURCES.cfu);
+    const [barSources, setBarSources] = useState(DATA_SOURCES.cfu);
+    const [objectiveSources, setObjectiveSources] = useState([]);
+    const [lineSources, setLineSources] = useState([]);
 
     // --- Loadings dos gráficos (do _old, mas separados) ---
     const [bubbleLoading, setBubbleLoading] = useState(false);
@@ -164,11 +169,11 @@ const DashboardPage = () => {
                     initialTotalStatusData 
                 ] = await Promise.all([
                     getAvailableYears(),             // 1
-                    getRecipientCountries(),         // 2
+                    getBeneficiaryCountries(),         // 2
                     getFundTypes(),                  // 3
                     getFundFocuses(),                // 4
-                    getFundsData(),                  // 5 (Para Bubble e filtros)
-                    getFundStatusData()              // 6 <-- [CORREÇÃO] Chamada adicionada de volta!
+                    getFundingProvidersData(),                  // 5 (Para Bubble e filtros)
+                    getFundingProviderSummaryData()              // 6 <-- [CORREÇÃO] Chamada adicionada de volta!
                     // A chamada para buscar projects foi removida antes (usa async agora)
                 ]);
                 
@@ -178,9 +183,11 @@ const DashboardPage = () => {
                 setHeatmapAvailableCountries(recipientCountriesData || []);
                 setFundTypes(fundTypesData || []);
                 setFundFocuses(fundFocusesData || []);
-                setAllFunds(fundsResponse || []);
-                setBubbleChartData(fundsResponse || []);
-                setBarChartData(initialTotalStatusData);
+                setAllFunds(fundsResponse.fundingProviders || []);
+                setBubbleChartData(fundsResponse.fundingProviders || []);
+                setBubbleSources(fundsResponse.sources?.length ? fundsResponse.sources : DATA_SOURCES.cfu);
+                setBarChartData(initialTotalStatusData.summary || null);
+                setBarSources(initialTotalStatusData.sources?.length ? initialTotalStatusData.sources : DATA_SOURCES.cfu);
 
             } catch (error) {
                 console.error("Falha ao carregar dados iniciais:", error);
@@ -205,6 +212,7 @@ const DashboardPage = () => {
                     objective: heatmapSelectedObjective,
                 });
                 setHeatmapKpis(data);
+                setHeatmapSources(data.sources || []);
             } catch (error) {
                 console.error("Falha ao buscar KPIs do heatmap:", error);
                 setHeatmapKpis({
@@ -215,6 +223,7 @@ const DashboardPage = () => {
                     total_adaptation: 0,
                     total_overlap: 0,
                 });
+                setHeatmapSources([]);
             } finally {
                 setHeatmapKpisLoading(false);
             }
@@ -227,18 +236,6 @@ const DashboardPage = () => {
         heatmapSelectedProjectIds,
         heatmapSelectedObjective,
     ]);
-
-    useEffect(() => {
-        setHeatmapAvailableYears(null);
-        setHeatmapAvailableCountries(null);
-        setHeatmapAvailableObjectives(null);
-    }, [
-        heatmapSelectedYears,
-        heatmapSelectedCountryIds,
-        heatmapSelectedProjectIds,
-        heatmapSelectedObjective,
-    ]);
-
 
     // --- Fetch para Gráficos Antigos (Lógica Original do _old + 'loadingFilters') ---
 
@@ -258,7 +255,9 @@ const DashboardPage = () => {
             };
             
             try {
-                const apiSeriesData = await getCommitmentTimeSeries(filters);
+                const response = await getCommitmentTimeSeries(filters);
+                const apiSeriesData = response.series || [];
+                setLineSources(response.sources || []);
                 const formattedSeries = apiSeriesData.map(series => ({
                     name: series.name,
                     data: (series.data || []).map(point => [point.year, point.amount || 0]).sort((a,b) => a[0] - b[0])
@@ -267,6 +266,7 @@ const DashboardPage = () => {
             } catch (error) {
                 console.error("Falha ao buscar dados para o gráfico de linhas:", error);
                 setLineChartSeries([]);
+                setLineSources([]);
             } finally {
                 setCommitmentsLoading(false);
             }
@@ -281,9 +281,10 @@ const DashboardPage = () => {
             setBubbleLoading(true);
             const filters = { selectedTypes: bubbleSelectedTypes, selectedFocuses: bubbleSelectedFocuses };
             try {
-                const data = await getFundsData(filters);
-                setBubbleChartData(data);
-            } catch (error) { setBubbleChartData([]); }
+                const data = await getFundingProvidersData(filters);
+                setBubbleChartData(data.fundingProviders || []);
+                setBubbleSources(data.sources?.length ? data.sources : DATA_SOURCES.cfu);
+            } catch (error) { setBubbleChartData([]); setBubbleSources(DATA_SOURCES.cfu); }
             finally { setBubbleLoading(false); }
         };
         fetchBubbleData();
@@ -298,17 +299,19 @@ const DashboardPage = () => {
             setBarLoading(true);
             // Prepara os filtros (serão arrays vazios se nada for selecionado)
             const filters = { 
-                selectedFunds: barSelectedFunds, 
+                selectedFundingProviders: barSelectedFunds, 
                 selectedTypes: barSelectedTypes, 
                 selectedFocuses: barSelectedFocuses 
             };
             try {
-                // A API getFundStatusData() com filtros vazios deve retornar os totais
-                const data = await getFundStatusData(filters);
-                setBarChartData(data); // Atualiza o estado do GRÁFICO
+                // A API getFundingProviderSummaryData() com filtros vazios deve retornar os totais
+                const data = await getFundingProviderSummaryData(filters);
+                setBarChartData(data.summary || null); // Atualiza o estado do GRÁFICO
+                setBarSources(data.sources?.length ? data.sources : DATA_SOURCES.cfu);
             } catch (error) { 
                 console.error("Falha ao buscar dados do gráfico de barras:", error);
                 setBarChartData(null); 
+                setBarSources(DATA_SOURCES.cfu);
             } finally { 
                 setBarLoading(false); 
             }
@@ -329,14 +332,140 @@ const DashboardPage = () => {
             };
             try {
                 const data = await getTotalsByObjective(filters);
-                setObjectiveTotals(data);
-            } catch (error) { setObjectiveTotals([]); }
+                setObjectiveTotals(data.totals || []);
+                setObjectiveSources(data.sources || []);
+            } catch (error) { setObjectiveTotals([]); setObjectiveSources([]); }
             finally { setObjectiveLoading(false); }
         };
         fetchObjectiveData();
     }, [loadingFilters, objectiveSelectedYears, objectiveSelectedCountries]);
 
     // --- [CORREÇÃO] useMemo para Objective Chart (com 'Ambos') ---
+
+    const bubbleAvailableTypes = useMemo(() => {
+        if (!fundTypes.length) return [];
+        if (!bubbleSelectedFocuses.length) return fundTypes;
+        const selectedFocusNames = fundFocuses
+            .filter((focus) => bubbleSelectedFocuses.includes(focus.id))
+            .map((focus) => focus.name);
+        return fundTypes.filter((type) =>
+            allFunds.some((fund) => selectedFocusNames.includes(fund.fund_focus) && fund.fund_type === type.name)
+        );
+    }, [allFunds, bubbleSelectedFocuses, fundFocuses, fundTypes]);
+
+    const bubbleAvailableFocuses = useMemo(() => {
+        if (!fundFocuses.length) return [];
+        if (!bubbleSelectedTypes.length) return fundFocuses;
+        const selectedTypeNames = fundTypes
+            .filter((type) => bubbleSelectedTypes.includes(type.id))
+            .map((type) => type.name);
+        return fundFocuses.filter((focus) =>
+            allFunds.some((fund) => selectedTypeNames.includes(fund.fund_type) && fund.fund_focus === focus.name)
+        );
+    }, [allFunds, bubbleSelectedTypes, fundFocuses, fundTypes]);
+
+    const barAvailableFunds = useMemo(() => {
+        const selectedTypeNames = fundTypes
+            .filter((type) => barSelectedTypes.includes(type.id))
+            .map((type) => type.name);
+        const selectedFocusNames = fundFocuses
+            .filter((focus) => barSelectedFocuses.includes(focus.id))
+            .map((focus) => focus.name);
+
+        return allFunds.filter((fund) => {
+            const matchesType = !selectedTypeNames.length || selectedTypeNames.includes(fund.fund_type);
+            const matchesFocus = !selectedFocusNames.length || selectedFocusNames.includes(fund.fund_focus);
+            return matchesType && matchesFocus;
+        });
+    }, [allFunds, barSelectedFocuses, barSelectedTypes, fundFocuses, fundTypes]);
+
+    const barAvailableTypes = useMemo(() => {
+        if (!fundTypes.length) return [];
+        const selectedFundRows = allFunds.filter((fund) => barSelectedFunds.includes(fund.id));
+        const selectedFocusNames = fundFocuses
+            .filter((focus) => barSelectedFocuses.includes(focus.id))
+            .map((focus) => focus.name);
+        return fundTypes.filter((type) => {
+            const matchesFunds = !selectedFundRows.length || selectedFundRows.some((fund) => fund.fund_type === type.name);
+            const matchesFocus = !selectedFocusNames.length || allFunds.some((fund) => fund.fund_type === type.name && selectedFocusNames.includes(fund.fund_focus));
+            return matchesFunds && matchesFocus;
+        });
+    }, [allFunds, barSelectedFocuses, barSelectedFunds, fundFocuses, fundTypes]);
+
+    const barAvailableFocuses = useMemo(() => {
+        if (!fundFocuses.length) return [];
+        const selectedFundRows = allFunds.filter((fund) => barSelectedFunds.includes(fund.id));
+        const selectedTypeNames = fundTypes
+            .filter((type) => barSelectedTypes.includes(type.id))
+            .map((type) => type.name);
+        return fundFocuses.filter((focus) => {
+            const matchesFunds = !selectedFundRows.length || selectedFundRows.some((fund) => fund.fund_focus === focus.name);
+            const matchesTypes = !selectedTypeNames.length || allFunds.some((fund) => fund.fund_focus === focus.name && selectedTypeNames.includes(fund.fund_type));
+            return matchesFunds && matchesTypes;
+        });
+    }, [allFunds, barSelectedFunds, barSelectedTypes, fundFocuses, fundTypes]);
+
+    useEffect(() => {
+        if (loadingFilters) return;
+        const fetchHeatmapOptions = async () => {
+            try {
+                const options = await getHeatmapFilterOptions({
+                    years: heatmapSelectedYears,
+                    countryIds: heatmapSelectedCountryIds,
+                    projectIds: heatmapSelectedProjectIds,
+                    objective: heatmapSelectedObjective,
+                });
+                setHeatmapAvailableYears(options.years || availableYears);
+                setHeatmapAvailableCountries(options.countries || allRecipientCountries);
+                setHeatmapAvailableObjectives(options.objectives || ['all', 'adaptation', 'mitigation', 'both']);
+            } catch (_error) {
+                setHeatmapAvailableYears(availableYears);
+                setHeatmapAvailableCountries(allRecipientCountries);
+                setHeatmapAvailableObjectives(['all', 'adaptation', 'mitigation', 'both']);
+            }
+        };
+        fetchHeatmapOptions();
+    }, [allRecipientCountries, availableYears, heatmapSelectedYears, heatmapSelectedCountryIds, heatmapSelectedProjectIds, heatmapSelectedObjective, loadingFilters]);
+
+    useEffect(() => {
+        if (loadingFilters) return;
+        const fetchCommitmentOptions = async () => {
+            const selectedCountryIds = allRecipientCountries
+                .filter((country) => commitmentsSelectedCountries.includes(country.name))
+                .map((country) => country.id);
+            try {
+                const options = await getHeatmapFilterOptions({
+                    years: commitmentsSelectedYears,
+                    countryIds: selectedCountryIds,
+                });
+                setCommitmentFilterYears(options.years || availableYears);
+                setCommitmentFilterCountries((options.countries || allRecipientCountries).map((country) => country.name));
+            } catch (_error) {
+                setCommitmentFilterYears(availableYears);
+                setCommitmentFilterCountries(allRecipientCountries.map((country) => country.name));
+            }
+        };
+        fetchCommitmentOptions();
+    }, [allRecipientCountries, availableYears, commitmentsSelectedYears, commitmentsSelectedCountries, loadingFilters]);
+
+    useEffect(() => {
+        if (loadingFilters) return;
+        const fetchObjectiveOptions = async () => {
+            try {
+                const options = await getHeatmapFilterOptions({
+                    years: objectiveSelectedYears,
+                    countryIds: objectiveSelectedCountries,
+                });
+                setObjectiveFilterYears(options.years || availableYears);
+                setObjectiveFilterCountries(options.countries || allRecipientCountries);
+            } catch (_error) {
+                setObjectiveFilterYears(availableYears);
+                setObjectiveFilterCountries(allRecipientCountries);
+            }
+        };
+        fetchObjectiveOptions();
+    }, [allRecipientCountries, availableYears, loadingFilters, objectiveSelectedYears, objectiveSelectedCountries]);
+
     const objectiveChartSeries = useMemo(() => {
         if (!objectiveTotals.length) return [];
         
@@ -391,23 +520,18 @@ const DashboardPage = () => {
         } else if (value === 0) {
             displayValue = '0';
         } else if (isCurrency) {
-            // Valores de compromissos estão em milhares de USD
-            if (value >= 1_000_000) {
-                const valueInBillions = value / 1_000_000;
+            // Os valores atuais do backend estao em USD millions.
+            if (value >= 1000) {
+                const valueInBillions = value / 1000;
                 displayValue = `${valueInBillions.toLocaleString(undefined, {
                     minimumFractionDigits: 1,
                     maximumFractionDigits: 1,
                 })} bi`;
-            } else if (value >= 1000) {
-                const valueInMillions = value / 1000;
-                displayValue = `${valueInMillions.toLocaleString(undefined, {
+            } else {
+                displayValue = `${value.toLocaleString(undefined, {
                     minimumFractionDigits: 1,
                     maximumFractionDigits: 1,
                 })} mi`;
-            } else {
-                displayValue = `${value.toLocaleString(undefined, {
-                    maximumFractionDigits: 1,
-                })} mil`;
             }
         } else {
             displayValue = value.toLocaleString();
@@ -484,12 +608,17 @@ const DashboardPage = () => {
                     </h3>
                     <div className={`mt-1 ${valueClassName}`}>{displayValue}</div>
                     {showGauge && (
-                        <p className="mt-0 text-[10px] text-dark-text-secondary">do montante total</p>
+                        <p className="mt-0 text-[10px] text-dark-text-secondary">da soma dos objetivos climáticos</p>
                     )}
                 </div>
             </div>
         );
     };
+
+    const objectiveGaugeTotal =
+        (heatmapKpis.total_mitigation || 0)
+        + (heatmapKpis.total_adaptation || 0)
+        + (heatmapKpis.total_overlap || 0);
 
     const renderKpis = () => (
         <div className="grid min-h-0 max-h-[900px] grid-rows-6 gap-3 h-full">
@@ -526,8 +655,8 @@ const DashboardPage = () => {
                 isCurrency={true}
                 accentColor="#58A6FF"
                 gaugePercent={
-                    heatmapKpis.total_amount
-                        ? (heatmapKpis.total_mitigation / heatmapKpis.total_amount) * 100
+                    objectiveGaugeTotal
+                        ? (heatmapKpis.total_mitigation / objectiveGaugeTotal) * 100
                         : 0
                 }
             />
@@ -539,8 +668,8 @@ const DashboardPage = () => {
                 isCurrency={true}
                 accentColor="#58A6FF"
                 gaugePercent={
-                    heatmapKpis.total_amount
-                        ? (heatmapKpis.total_adaptation / heatmapKpis.total_amount) * 100
+                    objectiveGaugeTotal
+                        ? (heatmapKpis.total_adaptation / objectiveGaugeTotal) * 100
                         : 0
                 }
             />
@@ -552,8 +681,8 @@ const DashboardPage = () => {
                 isCurrency={true}
                 accentColor="#58A6FF"
                 gaugePercent={
-                    heatmapKpis.total_amount
-                        ? (heatmapKpis.total_overlap / heatmapKpis.total_amount) * 100
+                    objectiveGaugeTotal
+                        ? (heatmapKpis.total_overlap / objectiveGaugeTotal) * 100
                         : 0
                 }
             />
@@ -587,7 +716,7 @@ const DashboardPage = () => {
                     title="Doações por País Receptor e Ano"
                     className="h-full pb-6"
                     sourceClassName="mt-4"
-                    sources={[DATA_SOURCES.oecd]}
+                    sources={heatmapSources}
                     dataTour="heatmap-chart"
                 >
                         {/* Filtros Heatmap */}
@@ -631,14 +760,14 @@ const DashboardPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[800px] "> {/* Ajuste de altura para reduzir espaço vazio */}
                 <ChartCard
                     title="Análise de Fundos por Tamanho"
-                    sources={[DATA_SOURCES.cfu]}
+                    sources={bubbleSources}
                     sourceClassName="mt-1"
                     dataTour="bubble-chart"
                 >
                      <BubbleChartFilters
-                        allFunds={allFunds} // Passa allFunds
-                        fundTypes={fundTypes}
-                        fundFocuses={fundFocuses}
+                        allFundingProviders={barAvailableFunds} // Mantido por compatibilidade local
+                        fundTypes={bubbleAvailableTypes}
+                        fundFocuses={bubbleAvailableFocuses}
                         selectedTypes={bubbleSelectedTypes}
                         selectedFocuses={bubbleSelectedFocuses}
                         onTypeChange={(options) => setBubbleSelectedTypes(extractValues(options))}
@@ -646,20 +775,20 @@ const DashboardPage = () => {
                      />
                      {/* [CORREÇÃO LAYOUT] Removida altura fixa h-[600px] */}
                      <div className="mt-4 flex-1 min-h-0">
-                        {bubbleLoading ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <BubbleChart fundsData={bubbleChartData} />}
+                        {bubbleLoading ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <BubbleChart fundingProvidersData={bubbleChartData} />}
                      </div>
                 </ChartCard>
 
                  <ChartCard
                      title="Status Financeiro Agregado"
-                     sources={[DATA_SOURCES.cfu]}
+                     sources={barSources}
                      sourceClassName="mt-1"
                      dataTour="status-chart"
                  >
                      <BarChartFilters
-                        allFunds={allFunds}
-                        allFundTypes={fundTypes}
-                        allFundFocuses={fundFocuses}
+                        allFundingProviders={allFunds}
+                        allFundTypes={barAvailableTypes}
+                        allFundFocuses={barAvailableFocuses}
                         selectedFundIds={barSelectedFunds}
                         selectedTypes={barSelectedTypes}
                         selectedFocuses={barSelectedFocuses}
@@ -681,12 +810,12 @@ const DashboardPage = () => {
                     title="Financiamento por Objetivo Climático"
                     className="pb-8"
                     sourceClassName="mt-4"
-                    sources={[DATA_SOURCES.oecd]}
+                    sources={objectiveSources}
                     dataTour="objective-chart"
                 >
                      <ObjectiveFilters
-                        years={availableYears}
-                        countries={allRecipientCountries} // Passa OBJETOS {id, name}
+                        years={objectiveFilterYears.length ? objectiveFilterYears : availableYears}
+                        countries={objectiveFilterCountries.length ? objectiveFilterCountries : allRecipientCountries} // Passa OBJETOS {id, name}
                         objectives={['Adaptação', 'Mitigação', 'Ambos']}
                         selectedYears={objectiveSelectedYears}
                         selectedCountries={objectiveSelectedCountries} // Espera IDs
@@ -708,12 +837,12 @@ const DashboardPage = () => {
                      title="Evolução do Financiamento por País Receptor"
                      className="pb-8"
                      sourceClassName="mt-4"
-                     sources={[DATA_SOURCES.oecd]}
+                     sources={lineSources}
                      dataTour="commitments-chart"
                  >
                     <Filters // Nome original
-                        years={availableYears}
-                        countries={allRecipientCountries.map(c => c.name)} // Passa NOMES
+                        years={commitmentFilterYears.length ? commitmentFilterYears : availableYears}
+                        countries={commitmentFilterCountries.length ? commitmentFilterCountries : allRecipientCountries.map(c => c.name)} // Passa NOMES
                         selectedYears={commitmentsSelectedYears}
                         selectedCountries={commitmentsSelectedCountries} // Espera NOMES
                         onYearChange={setCommitmentsSelectedYears}
