@@ -34,6 +34,8 @@ jobs:
           push: true
           build-args: |
             VITE_API_BASE_URL=/api
+            VITE_TUTORIAL_ENABLED=true
+            VITE_EVALUATION_FORM_URL=${{ vars.VITE_EVALUATION_FORM_URL }}
           tags: |
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.IMAGE_NAME }}:latest
@@ -42,7 +44,7 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
+          username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             docker login -u '${{ secrets.DOCKERHUB_USERNAME }}' -p '${{ secrets.DOCKERHUB_TOKEN }}'
