@@ -93,7 +93,7 @@ const SkeletonCell = ({ left, top }) => (
     </div>
 );
 
-const HeatmapChart = ({ filters, loadingFilters }) => {
+const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
     const {
         years = [],
         country_ids: countryIds = [],
@@ -437,6 +437,16 @@ const HeatmapChart = ({ filters, loadingFilters }) => {
         inflightRef.current.set(cacheKey, requestPromise);
         return requestPromise;
     }, [loadingFilters, filterKey, rowLimit, columnLimit, years, countryIds, projectIds, objective, view]);
+
+    useEffect(() => {
+        if (!initialData) {
+            return;
+        }
+        const cacheKey = `${filterKey}|r${initialData.row_offset ?? 0}|c${initialData.column_offset ?? 0}|rl${initialData.row_limit ?? rowLimit}|cl${initialData.column_limit ?? columnLimit}`;
+        cacheRef.current.set(cacheKey, initialData);
+        setSliceData(initialData);
+        setError(null);
+    }, [filterKey, initialData, rowLimit, columnLimit]);
 
     const prefetchNeighbors = useCallback((currentData) => {
         if (!currentData) {

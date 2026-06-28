@@ -1,5 +1,5 @@
 // src/pages/DashboardPage.jsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Highcharts from 'highcharts';
 
 // --- APLICAÇÃO DO TEMA ---
@@ -22,10 +22,10 @@ if (darkTheme) {
 // Importe as funções da API (antigas e novas)
 import {
     getFundingProvidersData, getFundTypes, getFundFocuses, getFundingProviderSummaryData,
-    getBeneficiaryCountries, getTotalsByObjective,
-    getCommitmentTimeSeries, getAvailableYears, getHeatmapFilterOptions,
+    getTotalsByObjective,
+    getCommitmentTimeSeries, getHeatmapFilterOptions,
     // --- Novas funções ---
-    getHeatmapKpis,
+    getHeatmapKpis, getRecordsOverview,
 } from '../services/api';
 
 // Importe TODOS os componentes
@@ -45,6 +45,8 @@ import ObjectiveFilters from '../components/dashboard/ObjectiveFilters';
 import { FiBox, FiGlobe, FiDollarSign, FiShuffle } from 'react-icons/fi';
 import { IoSyncCircle } from 'react-icons/io5';
 import { RiShieldCheckLine } from 'react-icons/ri';
+
+const HEATMAP_ONLY_MODE = false;
 
 // --- [CORREÇÃO] ChartCard atualizado para suportar layout flexível ---
 const ChartCard = ({
@@ -118,6 +120,8 @@ const DashboardPage = () => {
         total_overlap: 0,
     });
     const [heatmapKpisLoading, setHeatmapKpisLoading] = useState(true);
+    const [heatmapInitialGrid, setHeatmapInitialGrid] = useState(null);
+    const [overviewLoaded, setOverviewLoaded] = useState(false);
 
     // --- Estados para Heatmap ---
     const [heatmapSelectedYears, setHeatmapSelectedYears] = useState([]);
@@ -154,6 +158,9 @@ const DashboardPage = () => {
     const [barLoading, setBarLoading] = useState(false); // <-- Loading APENAS para o gráfico de barras
     const [objectiveLoading, setObjectiveLoading] = useState(false);
     const [commitmentsLoading, setCommitmentsLoading] = useState(false);
+    const [fundReferenceLoading, setFundReferenceLoading] = useState(false);
+    const [fundReferenceLoaded, setFundReferenceLoaded] = useState(false);
+    const [dashboardPhase, setDashboardPhase] = useState(1);
 
 
     // --- Fetch inicial (Combinado) ---
@@ -161,34 +168,33 @@ const DashboardPage = () => {
         const loadInitialData = async () => {
             setLoadingFilters(true); setHeatmapKpisLoading(true); setGlobalError(null);
             try {
-                // Carrega todos os filtros, KPIs e dados iniciais em paralelo
-                const [
-                    yearsData, recipientCountriesData, fundTypesData, fundFocusesData,
-                    fundsResponse,
-                    // [CORREÇÃO] A variável projectsData foi removida antes, então este é o 7º item
-                    initialTotalStatusData 
-                ] = await Promise.all([
-                    getAvailableYears(),             // 1
-                    getBeneficiaryCountries(),         // 2
-                    getFundTypes(),                  // 3
-                    getFundFocuses(),                // 4
-                    getFundingProvidersData(),                  // 5 (Para Bubble e filtros)
-                    getFundingProviderSummaryData()              // 6 <-- [CORREÇÃO] Chamada adicionada de volta!
-                    // A chamada para buscar projects foi removida antes (usa async agora)
-                ]);
+                const overview = await getRecordsOverview({
+                    objective: 'all',
+                    view: 'country_year',
+                    row_offset: 0,
+                    row_limit: 20,
+                    column_offset: 0,
+                    column_limit: 12,
+                });
                 
-                setAvailableYears(yearsData || []);
-                setAllRecipientCountries(recipientCountriesData || []);
-                setHeatmapAvailableYears(yearsData || []);
-                setHeatmapAvailableCountries(recipientCountriesData || []);
-                setFundTypes(fundTypesData || []);
-                setFundFocuses(fundFocusesData || []);
-                setAllFunds(fundsResponse.fundingProviders || []);
-                setBubbleChartData(fundsResponse.fundingProviders || []);
-                setBubbleSources(fundsResponse.sources?.length ? fundsResponse.sources : DATA_SOURCES.cfu);
-                setBarChartData(initialTotalStatusData.summary || null);
-                setBarSources(initialTotalStatusData.sources?.length ? initialTotalStatusData.sources : DATA_SOURCES.cfu);
-
+                setAvailableYears(overview.years || []);
+                setAllRecipientCountries(overview.countries || []);
+                setHeatmapAvailableYears(overview.years || []);
+                setHeatmapAvailableCountries(overview.countries || []);
+                setHeatmapAvailableObjectives(
+                    overview.objectives || ['all', 'adaptation', 'mitigation', 'both']
+                );
+                setHeatmapKpis(overview.summary || {
+                    total_projects: 0,
+                    total_countries: 0,
+                    total_amount: 0,
+                    total_mitigation: 0,
+                    total_adaptation: 0,
+                    total_overlap: 0,
+                });
+                setHeatmapSources(overview.summary?.sources || []);
+                setHeatmapInitialGrid(overview.grid || null);
+                setOverviewLoaded(true);
             } catch (error) {
                 console.error("Falha ao carregar dados iniciais:", error);
                 setGlobalError("Falha ao carregar opções de filtro ou KPIs. Verifique a conexão.");
@@ -201,7 +207,36 @@ const DashboardPage = () => {
     }, []);
 
     useEffect(() => {
+        if (loadingFilters) return undefined;
+
+        const phase2Timer = window.setTimeout(() => {
+            setDashboardPhase(2);
+        }, 150);
+        const phase3Timer = window.setTimeout(() => {
+            setDashboardPhase(3);
+        }, 350);
+        const phase4Timer = window.setTimeout(() => {
+            setDashboardPhase(4);
+        }, 550);
+
+        return () => {
+            window.clearTimeout(phase2Timer);
+            window.clearTimeout(phase3Timer);
+            window.clearTimeout(phase4Timer);
+        };
+    }, [loadingFilters]);
+
+    useEffect(() => {
         if (loadingFilters) return;
+        if (
+            overviewLoaded &&
+            !heatmapSelectedYears.length &&
+            !heatmapSelectedCountryIds.length &&
+            !heatmapSelectedProjectIds.length &&
+            heatmapSelectedObjective === 'all'
+        ) {
+            return;
+        }
         const fetchHeatmapKpis = async () => {
             setHeatmapKpisLoading(true);
             try {
@@ -235,6 +270,51 @@ const DashboardPage = () => {
         heatmapSelectedCountryIds,
         heatmapSelectedProjectIds,
         heatmapSelectedObjective,
+        overviewLoaded,
+    ]);
+
+    useEffect(() => {
+        if (loadingFilters) return;
+        if (HEATMAP_ONLY_MODE) return;
+        if (dashboardPhase < 2) return;
+        if (fundReferenceLoaded || fundReferenceLoading) return;
+
+        const loadFundReferenceData = async () => {
+            setFundReferenceLoading(true);
+            try {
+                const [fundTypesData, fundFocusesData, fundsResponse] =
+                    await Promise.all([
+                        getFundTypes(),
+                        getFundFocuses(),
+                        getFundingProvidersData(),
+                    ]);
+
+                setFundTypes(fundTypesData || []);
+                setFundFocuses(fundFocusesData || []);
+                setAllFunds(fundsResponse.fundingProviders || []);
+                setBubbleChartData(fundsResponse.fundingProviders || []);
+                setBubbleSources(
+                    fundsResponse.sources?.length
+                        ? fundsResponse.sources
+                        : DATA_SOURCES.cfu
+                );
+                setFundReferenceLoaded(true);
+            } catch (error) {
+                console.error(
+                    "Falha ao carregar dados de fundos sob demanda:",
+                    error
+                );
+            } finally {
+                setFundReferenceLoading(false);
+            }
+        };
+
+        loadFundReferenceData();
+    }, [
+        dashboardPhase,
+        fundReferenceLoaded,
+        fundReferenceLoading,
+        loadingFilters,
     ]);
 
     // --- Fetch para Gráficos Antigos (Lógica Original do _old + 'loadingFilters') ---
@@ -242,6 +322,8 @@ const DashboardPage = () => {
     // Commitments Line Chart Data
     useEffect(() => {
         if (loadingFilters) return; // Espera filtros carregarem
+        if (HEATMAP_ONLY_MODE) return;
+        if (dashboardPhase < 4) return;
         
         const fetchLineChartData = async () => {
             setCommitmentsLoading(true);
@@ -272,11 +354,19 @@ const DashboardPage = () => {
             }
         };
         fetchLineChartData();
-    }, [loadingFilters, commitmentsSelectedYears, commitmentsSelectedCountries, allRecipientCountries]);
+    }, [
+        allRecipientCountries,
+        commitmentsSelectedCountries,
+        commitmentsSelectedYears,
+        dashboardPhase,
+        loadingFilters,
+    ]);
     
     // Bubble Chart Data
     useEffect(() => {
         if (loadingFilters) return;
+        if (HEATMAP_ONLY_MODE) return;
+        if (dashboardPhase < 2 || !fundReferenceLoaded) return;
         const fetchBubbleData = async () => {
             setBubbleLoading(true);
             const filters = { selectedTypes: bubbleSelectedTypes, selectedFocuses: bubbleSelectedFocuses };
@@ -288,12 +378,20 @@ const DashboardPage = () => {
             finally { setBubbleLoading(false); }
         };
         fetchBubbleData();
-    }, [loadingFilters, bubbleSelectedTypes, bubbleSelectedFocuses]);
+    }, [
+        bubbleSelectedFocuses,
+        bubbleSelectedTypes,
+        dashboardPhase,
+        fundReferenceLoaded,
+        loadingFilters,
+    ]);
 
     // [CORREÇÃO] Bar Chart Data (useEffect corrigido para buscar totais quando filtros vazios)
     useEffect(() => {
         // Só roda DEPOIS do fetch inicial
         if (loadingFilters) return; 
+        if (HEATMAP_ONLY_MODE) return;
+        if (dashboardPhase < 2) return;
         
         const fetchBarData = async () => {
             setBarLoading(true);
@@ -319,11 +417,19 @@ const DashboardPage = () => {
         // Roda a função
         fetchBarData();
     // Roda quando loadingFilters muda OU quando QUALQUER filtro da barra muda
-    }, [loadingFilters, barSelectedFunds, barSelectedTypes, barSelectedFocuses]); 
+    }, [
+        barSelectedFocuses,
+        barSelectedFunds,
+        barSelectedTypes,
+        dashboardPhase,
+        loadingFilters,
+    ]); 
 
     // Objective Line Chart Data
     useEffect(() => {
         if (loadingFilters) return;
+        if (HEATMAP_ONLY_MODE) return;
+        if (dashboardPhase < 3) return;
         const fetchObjectiveData = async () => {
             setObjectiveLoading(true);
             const filters = {
@@ -338,7 +444,12 @@ const DashboardPage = () => {
             finally { setObjectiveLoading(false); }
         };
         fetchObjectiveData();
-    }, [loadingFilters, objectiveSelectedYears, objectiveSelectedCountries]);
+    }, [
+        dashboardPhase,
+        loadingFilters,
+        objectiveSelectedCountries,
+        objectiveSelectedYears,
+    ]);
 
     // --- [CORREÇÃO] useMemo para Objective Chart (com 'Ambos') ---
 
@@ -407,6 +518,15 @@ const DashboardPage = () => {
 
     useEffect(() => {
         if (loadingFilters) return;
+        if (
+            overviewLoaded &&
+            !heatmapSelectedYears.length &&
+            !heatmapSelectedCountryIds.length &&
+            !heatmapSelectedProjectIds.length &&
+            heatmapSelectedObjective === 'all'
+        ) {
+            return;
+        }
         const fetchHeatmapOptions = async () => {
             try {
                 const options = await getHeatmapFilterOptions({
@@ -425,10 +545,12 @@ const DashboardPage = () => {
             }
         };
         fetchHeatmapOptions();
-    }, [allRecipientCountries, availableYears, heatmapSelectedYears, heatmapSelectedCountryIds, heatmapSelectedProjectIds, heatmapSelectedObjective, loadingFilters]);
+    }, [allRecipientCountries, availableYears, heatmapSelectedYears, heatmapSelectedCountryIds, heatmapSelectedProjectIds, heatmapSelectedObjective, loadingFilters, overviewLoaded]);
 
     useEffect(() => {
         if (loadingFilters) return;
+        if (HEATMAP_ONLY_MODE) return;
+        if (dashboardPhase < 4) return;
         const fetchCommitmentOptions = async () => {
             const selectedCountryIds = allRecipientCountries
                 .filter((country) => commitmentsSelectedCountries.includes(country.name))
@@ -446,10 +568,19 @@ const DashboardPage = () => {
             }
         };
         fetchCommitmentOptions();
-    }, [allRecipientCountries, availableYears, commitmentsSelectedYears, commitmentsSelectedCountries, loadingFilters]);
+    }, [
+        allRecipientCountries,
+        availableYears,
+        commitmentsSelectedCountries,
+        commitmentsSelectedYears,
+        dashboardPhase,
+        loadingFilters,
+    ]);
 
     useEffect(() => {
         if (loadingFilters) return;
+        if (HEATMAP_ONLY_MODE) return;
+        if (dashboardPhase < 3) return;
         const fetchObjectiveOptions = async () => {
             try {
                 const options = await getHeatmapFilterOptions({
@@ -464,7 +595,14 @@ const DashboardPage = () => {
             }
         };
         fetchObjectiveOptions();
-    }, [allRecipientCountries, availableYears, loadingFilters, objectiveSelectedYears, objectiveSelectedCountries]);
+    }, [
+        allRecipientCountries,
+        availableYears,
+        dashboardPhase,
+        loadingFilters,
+        objectiveSelectedCountries,
+        objectiveSelectedYears,
+    ]);
 
     const objectiveChartSeries = useMemo(() => {
         if (!objectiveTotals.length) return [];
@@ -619,6 +757,13 @@ const DashboardPage = () => {
         (heatmapKpis.total_mitigation || 0)
         + (heatmapKpis.total_adaptation || 0)
         + (heatmapKpis.total_overlap || 0);
+    const useInitialHeatmapGrid =
+        !!overviewLoaded
+        && !heatmapSelectedYears.length
+        && !heatmapSelectedCountryIds.length
+        && !heatmapSelectedProjectIds.length
+        && heatmapSelectedObjective === 'all'
+        && heatmapSelectedView === 'country_year';
 
     const renderKpis = () => (
         <div className="grid min-h-0 max-h-[900px] grid-rows-6 gap-3 h-full">
@@ -722,7 +867,7 @@ const DashboardPage = () => {
                         {/* Filtros Heatmap */}
                         <HeatmapFilters
                             allYears={heatmapAvailableYears ?? availableYears}
-                            allCountries={heatmapAvailableCountries ?? allRecipientCountries} // Passa objetos {id, name}
+                            allCountries={heatmapAvailableCountries ?? allRecipientCountries}
                             availableObjectives={heatmapAvailableObjectives ?? ['all', 'adaptation', 'mitigation', 'both']}
                             
                             selectedYears={heatmapSelectedYears}
@@ -737,7 +882,6 @@ const DashboardPage = () => {
                             onObjectiveChange={(value) => handleHeatmapFilterChange(setHeatmapSelectedObjective, value)}
                             onViewChange={(value) => handleHeatmapFilterChange(setHeatmapSelectedView, value)}
                         />
-                        {/* Container do HeatmapChart usa flex-grow e min-h-0 */}
                         <div className="mt-4 flex-grow min-h-0 overflow-hidden">
                             <HeatmapChart
                                 filters={{
@@ -748,112 +892,112 @@ const DashboardPage = () => {
                                     view: heatmapSelectedView,
                                 }}
                                 loadingFilters={loadingFilters}
+                                initialData={useInitialHeatmapGrid ? heatmapInitialGrid : null}
                             />
                         </div>
                     </ChartCard>
                 </div>
             </div>
 
-            {/* --- Seção Inferior: Gráficos Antigos (Layout Original + Correção de Altura) --- */}
-            
-            {/* [CORREÇÃO LAYOUT] Altura da LINHA definida aqui (mantendo seus 850px) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[800px] "> {/* Ajuste de altura para reduzir espaço vazio */}
-                <ChartCard
-                    title="Análise de Fundos por Tamanho"
-                    sources={bubbleSources}
-                    sourceClassName="mt-1"
-                    dataTour="bubble-chart"
-                >
-                     <BubbleChartFilters
-                        allFundingProviders={barAvailableFunds} // Mantido por compatibilidade local
-                        fundTypes={bubbleAvailableTypes}
-                        fundFocuses={bubbleAvailableFocuses}
-                        selectedTypes={bubbleSelectedTypes}
-                        selectedFocuses={bubbleSelectedFocuses}
-                        onTypeChange={(options) => setBubbleSelectedTypes(extractValues(options))}
-                        onFocusChange={(options) => setBubbleSelectedFocuses(extractValues(options))}
-                     />
-                     {/* [CORREÇÃO LAYOUT] Removida altura fixa h-[600px] */}
-                     <div className="mt-4 flex-1 min-h-0">
-                        {bubbleLoading ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <BubbleChart fundingProvidersData={bubbleChartData} />}
-                     </div>
-                </ChartCard>
+            {!HEATMAP_ONLY_MODE && (
+                <>
+                    {/* --- Seção Inferior: Gráficos Antigos (Layout Original + Correção de Altura) --- */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[800px] ">
+                        <ChartCard
+                            title="Análise de Fundos por Tamanho"
+                            sources={bubbleSources}
+                            sourceClassName="mt-1"
+                            dataTour="bubble-chart"
+                        >
+                             <BubbleChartFilters
+                                allFundingProviders={barAvailableFunds}
+                                fundTypes={bubbleAvailableTypes}
+                                fundFocuses={bubbleAvailableFocuses}
+                                selectedTypes={bubbleSelectedTypes}
+                                selectedFocuses={bubbleSelectedFocuses}
+                                onTypeChange={(options) => setBubbleSelectedTypes(extractValues(options))}
+                                onFocusChange={(options) => setBubbleSelectedFocuses(extractValues(options))}
+                             />
+                             <div className="mt-4 flex-1 min-h-0">
+                                {bubbleLoading || fundReferenceLoading || dashboardPhase < 2 ? (
+                                    <div className="h-full flex items-center justify-center"><LoadingSpinner/></div>
+                                ) : (
+                                    <BubbleChart fundingProvidersData={bubbleChartData} />
+                                )}
+                             </div>
+                        </ChartCard>
 
-                 <ChartCard
-                     title="Status Financeiro Agregado"
-                     sources={barSources}
-                     sourceClassName="mt-1"
-                     dataTour="status-chart"
-                 >
-                     <BarChartFilters
-                        allFundingProviders={allFunds}
-                        allFundTypes={barAvailableTypes}
-                        allFundFocuses={barAvailableFocuses}
-                        selectedFundIds={barSelectedFunds}
-                        selectedTypes={barSelectedTypes}
-                        selectedFocuses={barSelectedFocuses}
-                        onFundChange={(options) => setBarSelectedFunds(extractValues(options))}
-                        onTypeChange={(options) => setBarSelectedTypes(extractValues(options))}
-                        onFocusChange={(options) => setBarSelectedFocuses(extractValues(options))}
-                    />
-                      {/* [CORREÇÃO LAYOUT] Removida altura fixa h-[600px] e pb-4 */}
-                      <div className="mt-4 flex-1 min-h-0">
-                        {/* Usa barChartData e barLoading (não totalKpisLoading) */}
-                        {barLoading ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <BarChart statusData={barChartData} />}
-                      </div>
-                 </ChartCard>
-            </div>
+                         <ChartCard
+                             title="Status Financeiro Agregado"
+                             sources={barSources}
+                             sourceClassName="mt-1"
+                             dataTour="status-chart"
+                         >
+                             <BarChartFilters
+                                allFundingProviders={allFunds}
+                                allFundTypes={barAvailableTypes}
+                                allFundFocuses={barAvailableFocuses}
+                                selectedFundIds={barSelectedFunds}
+                                selectedTypes={barSelectedTypes}
+                                selectedFocuses={barSelectedFocuses}
+                                onFundChange={(options) => setBarSelectedFunds(extractValues(options))}
+                                onTypeChange={(options) => setBarSelectedTypes(extractValues(options))}
+                                onFocusChange={(options) => setBarSelectedFocuses(extractValues(options))}
+                            />
+                              <div className="mt-4 flex-1 min-h-0">
+                                {barLoading || fundReferenceLoading || dashboardPhase < 2 ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <BarChart statusData={barChartData} />}
+                              </div>
+                         </ChartCard>
+                    </div>
 
-            {/* [CORREÇÃO LAYOUT] Altura da LINHA definida aqui */}
-            <div className="grid grid-cols-1 gap-6 h-[560px]">
-                <ChartCard
-                    title="Financiamento por Objetivo Climático"
-                    className="pb-8"
-                    sourceClassName="mt-4"
-                    sources={objectiveSources}
-                    dataTour="objective-chart"
-                >
-                     <ObjectiveFilters
-                        years={objectiveFilterYears.length ? objectiveFilterYears : availableYears}
-                        countries={objectiveFilterCountries.length ? objectiveFilterCountries : allRecipientCountries} // Passa OBJETOS {id, name}
-                        objectives={['Adaptação', 'Mitigação', 'Ambos']}
-                        selectedYears={objectiveSelectedYears}
-                        selectedCountries={objectiveSelectedCountries} // Espera IDs
-                        selectedObjectives={objectiveSelectedObjectives} // Espera Nomes
-                        onYearChange={setObjectiveSelectedYears}
-                        onCountryChange={setObjectiveSelectedCountries}
-                        onObjectiveChange={setObjectiveSelectedObjectives}
-                    />
-                     {/* [CORREÇÃO LAYOUT] Removida altura fixa h-[400px] */}
-                     <div className="mt-4 flex-grow min-h-0">
-                        {objectiveLoading ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <ObjectiveLineChart seriesData={objectiveChartSeries} />}
-                     </div>
-                 </ChartCard>
-            </div>
+                    <div className="grid grid-cols-1 gap-6 h-[560px]">
+                        <ChartCard
+                            title="Financiamento por Objetivo Climático"
+                            className="pb-8"
+                            sourceClassName="mt-4"
+                            sources={objectiveSources}
+                            dataTour="objective-chart"
+                        >
+                             <ObjectiveFilters
+                                years={objectiveFilterYears.length ? objectiveFilterYears : availableYears}
+                                countries={objectiveFilterCountries.length ? objectiveFilterCountries : allRecipientCountries}
+                                objectives={['Adaptação', 'Mitigação', 'Ambos']}
+                                selectedYears={objectiveSelectedYears}
+                                selectedCountries={objectiveSelectedCountries}
+                                selectedObjectives={objectiveSelectedObjectives}
+                                onYearChange={setObjectiveSelectedYears}
+                                onCountryChange={setObjectiveSelectedCountries}
+                                onObjectiveChange={setObjectiveSelectedObjectives}
+                            />
+                             <div className="mt-4 flex-grow min-h-0">
+                                {objectiveLoading || dashboardPhase < 3 ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <ObjectiveLineChart seriesData={objectiveChartSeries} />}
+                             </div>
+                         </ChartCard>
+                    </div>
 
-            {/* [CORREÇÃO LAYOUT] Altura da LINHA definida aqui */}
-             <div className="grid grid-cols-1 gap-6 h-[560px]">
-                 <ChartCard
-                     title="Evolução do Financiamento por País Receptor"
-                     className="pb-8"
-                     sourceClassName="mt-4"
-                     sources={lineSources}
-                     dataTour="commitments-chart"
-                 >
-                    <Filters // Nome original
-                        years={commitmentFilterYears.length ? commitmentFilterYears : availableYears}
-                        countries={commitmentFilterCountries.length ? commitmentFilterCountries : allRecipientCountries.map(c => c.name)} // Passa NOMES
-                        selectedYears={commitmentsSelectedYears}
-                        selectedCountries={commitmentsSelectedCountries} // Espera NOMES
-                        onYearChange={setCommitmentsSelectedYears}
-                        onCountryChange={setCommitmentsSelectedCountries}
-                    />
-                    {/* [CORREÇÃO LAYOUT] Removida altura fixa h-[400px] */}
-                     <div className="mt-4 flex-grow min-h-0">
-                        {commitmentsLoading ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <LineChart seriesData={lineChartSeries} />}
-                     </div>
-                 </ChartCard>
-            </div>
+                     <div className="grid grid-cols-1 gap-6 h-[560px]">
+                         <ChartCard
+                             title="Evolução do Financiamento por País Receptor"
+                             className="pb-8"
+                             sourceClassName="mt-4"
+                             sources={lineSources}
+                             dataTour="commitments-chart"
+                         >
+                            <Filters
+                                years={commitmentFilterYears.length ? commitmentFilterYears : availableYears}
+                                countries={commitmentFilterCountries.length ? commitmentFilterCountries : allRecipientCountries.map(c => c.name)}
+                                selectedYears={commitmentsSelectedYears}
+                                selectedCountries={commitmentsSelectedCountries}
+                                onYearChange={setCommitmentsSelectedYears}
+                                onCountryChange={setCommitmentsSelectedCountries}
+                            />
+                             <div className="mt-4 flex-grow min-h-0">
+                                {commitmentsLoading || dashboardPhase < 4 ? <div className="h-full flex items-center justify-center"><LoadingSpinner/></div> : <LineChart seriesData={lineChartSeries} />}
+                             </div>
+                         </ChartCard>
+                    </div>
+                </>
+            )}
         </div>
     );
 };

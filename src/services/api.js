@@ -202,6 +202,58 @@ export const getAvailableYears = async () => {
   return response.data || [];
 };
 
+export const getRecordsOverview = async (filters = {}) => {
+  const params = {
+    view: filters.view || 'country_year',
+    objective: filters.objective || 'all',
+    year: filters.years || [],
+    country_id: filters.country_ids || [],
+    project_id: filters.project_ids || [],
+    row_offset: filters.row_offset ?? 0,
+    row_limit: filters.row_limit ?? 20,
+    column_offset: filters.column_offset ?? 0,
+    column_limit: filters.column_limit ?? 12,
+  };
+
+  const response = await apiClient.get('/records/overview', {
+    params,
+    paramsSerializer,
+  });
+
+  return response.data || {
+    years: [],
+    countries: [],
+    projects: [],
+    objectives: [],
+    summary: {
+      total_projects: 0,
+      total_countries: 0,
+      total_amount: 0,
+      total_mitigation: 0,
+      total_adaptation: 0,
+      total_overlap: 0,
+      sources: [],
+    },
+    grid: {
+      view: params.view,
+      rows: [],
+      columns: [],
+      row_totals: [],
+      column_totals: [],
+      cells: [],
+      grand_total: 0,
+      grand_total_projects: 0,
+      row_count: 0,
+      column_count: 0,
+      row_offset: params.row_offset,
+      column_offset: params.column_offset,
+      row_limit: params.row_limit,
+      column_limit: params.column_limit,
+      sources: [],
+    },
+  };
+};
+
 export const getHeatmapFilterOptions = async (filters = {}) => {
   const params = {};
   if (filters.years?.length) params.year = filters.years;
