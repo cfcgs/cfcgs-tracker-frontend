@@ -303,9 +303,11 @@ const ChatbotPage = () => {
             handleBotResponse(response, currentInput);
         } catch (err) {
             console.error('Erro ao chamar o chatbot:', err);
-            const errorMessage = { sender: 'bot', text: 'Desculpe, não consegui processar sua pergunta. Tente novamente.' };
+            const backendDetail = err?.response?.data?.detail;
+            const fallbackMessage = 'Desculpe, não consegui processar sua pergunta. Tente novamente.';
+            const errorMessage = { sender: 'bot', text: backendDetail || fallbackMessage };
             setMessages(prev => [...prev, errorMessage]);
-            setError('Falha na comunicação com o assistente.');
+            setError(backendDetail || 'Falha na comunicação com o assistente.');
             setIsAwaitingConfirmation(false);
             setPendingPaginationQuestion(null);
             setActivePagination(null);
@@ -351,9 +353,11 @@ const ChatbotPage = () => {
             handleBotResponse(response, baseQuestion);
         } catch (err) {
             console.error('Erro ao buscar resultados paginados:', err);
-            const errorMessage = { sender: 'bot', text: 'Desculpe, tive um problema ao buscar os resultados paginados.' };
+            const backendDetail = err?.response?.data?.detail;
+            const fallbackMessage = 'Desculpe, tive um problema ao buscar os resultados paginados.';
+            const errorMessage = { sender: 'bot', text: backendDetail || fallbackMessage };
             setMessages(prev => [...prev, errorMessage]);
-            setError('Falha na comunicação com o assistente.');
+            setError(backendDetail || 'Falha na comunicação com o assistente.');
         } finally {
             setLoading(false);
         }
@@ -512,7 +516,7 @@ const ChatbotPage = () => {
                                                  rel="noreferrer"
                                                  className="text-accent-blue hover:underline"
                                              >
-                                                 {source.name}
+                                                 {source.label || source.name}
                                              </a>
                                          </React.Fragment>
                                      ))}

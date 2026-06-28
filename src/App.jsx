@@ -730,17 +730,26 @@ function App() {
                 }}
                 showAdminEntry={Boolean(currentUser)}
                 footer={
-                    tutorialEnabled ? (
+                    <div className="space-y-3">
                         <button
                             type="button"
-                            onClick={toggleTour}
-                            data-tour="tutorial-toggle"
-                            className="w-full flex items-center justify-center gap-2 rounded-full border border-accent-blue/40 bg-dark-card/90 px-4 py-3 text-sm font-semibold text-accent-blue shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-dark-card"
+                            onClick={handleAdminAccess}
+                            className="w-full flex items-center justify-center gap-2 rounded-full border border-accent-blue/30 bg-dark-card/95 px-4 py-3 text-sm font-semibold text-accent-blue shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-dark-card"
                         >
-                            {tutorialButtonIcon}
-                            {tutorialButtonLabel}
+                            <FiShield /> Gestão
                         </button>
-                    ) : null
+                        {tutorialEnabled ? (
+                            <button
+                                type="button"
+                                onClick={toggleTour}
+                                data-tour="tutorial-toggle"
+                                className="w-full flex items-center justify-center gap-2 rounded-full border border-accent-blue/40 bg-dark-card/90 px-4 py-3 text-sm font-semibold text-accent-blue shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-dark-card"
+                            >
+                                {tutorialButtonIcon}
+                                {tutorialButtonLabel}
+                            </button>
+                        ) : null}
+                    </div>
                 }
             />
             <main ref={mainRef} className="flex-1 overflow-y-auto">
@@ -768,28 +777,13 @@ function App() {
                         </button>
                         <button
                             type="button"
-                            onClick={handleAdminAccess}
-                            className="inline-flex items-center gap-2 rounded-full border border-accent-blue/30 bg-dark-card/95 px-4 py-3 text-sm font-semibold text-accent-blue shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:bg-dark-card"
-                        >
-                            <FiShield /> Gestão
-                        </button>
-                        <button
-                            type="button"
                             onClick={handleLogout}
                             className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-dark-card/95 px-4 py-3 text-sm font-semibold text-dark-text-secondary shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:text-dark-text"
                         >
                             Sair
                         </button>
                     </>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={handleAdminAccess}
-                        className="inline-flex items-center gap-2 rounded-full border border-accent-blue/30 bg-dark-card/95 px-4 py-3 text-sm font-semibold text-accent-blue shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:bg-dark-card"
-                    >
-                        <FiShield /> Gestão
-                    </button>
-                )}
+                ) : null}
             </div>
 
             {tourCompleted && activeView === 'dashboard' && import.meta.env.VITE_EVALUATION_FORM_URL && (
