@@ -6,6 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: http://localhost:8001/api
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_TUTORIAL_ENABLED: ${VITE_TUTORIAL_ENABLED}
+        VITE_EVALUATION_FORM_URL: ${VITE_EVALUATION_FORM_URL}
     ports:
       - "8080:80"

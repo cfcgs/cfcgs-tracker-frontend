@@ -647,7 +647,7 @@ const DashboardPage = () => {
         watermarkIcon,
     }) => {
         let displayValue = '-';
-        let valueClassName = "text-3xl font-semibold text-white leading-tight";
+        let valueClassName = "text-2xl font-semibold text-white leading-tight md:text-3xl";
 
         if (isLoading) {
             displayValue = <LoadingSpinner size="xs" inline />;
@@ -680,10 +680,10 @@ const DashboardPage = () => {
         const percentLabel = `${clampedGauge.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
         const gaugeTrack = '#1d2430';
         const pointerRotation = -90 + (clampedGauge / 100) * 180;
-        const paddingRight = showGauge || watermarkIcon ? 'pr-28' : '';
+        const paddingRight = showGauge || watermarkIcon ? 'pr-24 md:pr-28' : '';
 
         return (
-            <div className={`relative flex h-full min-h-0 flex-col justify-between rounded-2xl border border-dark-border/70 bg-gradient-to-br from-[#111827] via-[#0e1623] to-[#0b111b] p-3 shadow-[0_12px_22px_rgba(0,0,0,0.35)] ${paddingRight}`}>
+            <div className={`relative flex h-full min-h-0 flex-col justify-between rounded-2xl border border-dark-border/70 bg-gradient-to-br from-[#111827] via-[#0e1623] to-[#0b111b] p-3.5 shadow-[0_12px_22px_rgba(0,0,0,0.35)] md:p-3 ${paddingRight}`}>
                 <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl" style={{ background: accentColor }} />
                 {watermarkIcon && !showGauge && (
                     <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[68px] opacity-15">
@@ -696,8 +696,8 @@ const DashboardPage = () => {
                     </div>
                 </div>
                 {showGauge && (
-                    <div className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2">
-                        <div className="relative h-16 w-28">
+                    <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 md:right-5">
+                        <div className="relative h-14 w-24 md:h-16 md:w-28">
                             <svg className="h-full w-full" viewBox="0 0 100 60">
                                 <path
                                     d="M10 50 A40 40 0 0 1 90 50"
@@ -741,12 +741,14 @@ const DashboardPage = () => {
                     </div>
                 )}
                 <div className="mt-2.5">
-                    <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-dark-text-secondary">
+                    <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-dark-text-secondary md:text-[10px]">
                         {title}
                     </h3>
                     <div className={`mt-1 ${valueClassName}`}>{displayValue}</div>
                     {showGauge && (
-                        <p className="mt-0 text-[10px] text-dark-text-secondary">da soma dos objetivos climáticos</p>
+                        <p className="mt-0 text-[8px] leading-tight text-dark-text-secondary 2xl:text-[10px]">
+                            da soma dos objetivos climáticos
+                        </p>
                     )}
                 </div>
             </div>
@@ -766,7 +768,7 @@ const DashboardPage = () => {
         && heatmapSelectedView === 'country_year';
 
     const renderKpis = () => (
-        <div className="grid min-h-0 max-h-[900px] grid-rows-6 gap-3 h-full">
+        <div className="grid min-h-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1 xl:grid-rows-6 h-full">
             <KpiCard
                 title="Total Projetos"
                 value={heatmapKpis.total_projects}
@@ -838,28 +840,23 @@ const DashboardPage = () => {
     if (loadingFilters) return <div className="flex justify-center items-center h-screen"><LoadingSpinner /></div>;
 
     return (
-        <div className="p-4 md:p-6 space-y-6">
-            {globalError && (
-                 <div className="p-4 bg-red-900/50 text-red-300 border border-red-700 rounded-md">
-                    Erro ao carregar dados: {globalError}
-                 </div>
-            )}
+        <div className="flex flex-col gap-6 p-4 md:p-6">
 
             {/* --- Nova Linha Superior: KPIs + Heatmap --- */}
             {/* [CORREÇÃO LAYOUT] Adicionado 'items-start' para alinhar a coluna do KPI ao topo */}
             {/* Altura mínima ajustada para acomodar o Heatmap */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[640px] items-stretch mb-[280px]">
+            <div className="grid grid-cols-1 gap-8 items-start xl:grid-cols-4 xl:items-stretch">
                 
                 {/* [CORREÇÃO LAYOUT] Coluna Esquerda: KPIs (Agora alinhada ao topo e com novo design) */}
-                <div className="lg:col-span-1 h-full self-stretch">
+                <div className="self-stretch h-[880px] md:h-[820px] xl:col-span-1 xl:h-[920px]">
                     {renderKpis()}
                 </div>
 
                 {/* Coluna Direita: Filtros e Heatmap */}
-                <div className="lg:col-span-3 h-full self-stretch min-h-0 overflow-hidden">
+                <div className="h-[880px] self-stretch overflow-hidden md:h-[820px] xl:col-span-3 xl:h-[920px]">
                 <ChartCard
                     title="Doações por País Receptor e Ano"
-                    className="h-full pb-6"
+                    className="h-[880px] pb-6 md:h-[820px] xl:h-[920px]"
                     sourceClassName="mt-4"
                     sources={heatmapSources}
                     dataTour="heatmap-chart"
@@ -882,7 +879,7 @@ const DashboardPage = () => {
                             onObjectiveChange={(value) => handleHeatmapFilterChange(setHeatmapSelectedObjective, value)}
                             onViewChange={(value) => handleHeatmapFilterChange(setHeatmapSelectedView, value)}
                         />
-                        <div className="mt-4 flex-grow min-h-0 overflow-hidden">
+                        <div className="mt-4 min-h-0 flex-grow overflow-hidden">
                             <HeatmapChart
                                 filters={{
                                     years: heatmapSelectedYears,
@@ -902,9 +899,10 @@ const DashboardPage = () => {
             {!HEATMAP_ONLY_MODE && (
                 <>
                     {/* --- Seção Inferior: Gráficos Antigos (Layout Original + Correção de Altura) --- */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[800px] ">
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                         <ChartCard
                             title="Análise de Fundos por Tamanho"
+                            className="min-h-[420px] md:min-h-[520px] xl:h-[800px]"
                             sources={bubbleSources}
                             sourceClassName="mt-1"
                             dataTour="bubble-chart"
@@ -929,6 +927,7 @@ const DashboardPage = () => {
 
                          <ChartCard
                              title="Status Financeiro Agregado"
+                             className="min-h-[420px] md:min-h-[520px] xl:h-[800px]"
                              sources={barSources}
                              sourceClassName="mt-1"
                              dataTour="status-chart"
@@ -950,10 +949,10 @@ const DashboardPage = () => {
                          </ChartCard>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-6 h-[560px]">
+                    <div className="grid grid-cols-1 gap-6">
                         <ChartCard
                             title="Financiamento por Objetivo Climático"
-                            className="pb-8"
+                            className="min-h-[420px] pb-8 md:min-h-[520px] xl:h-[560px]"
                             sourceClassName="mt-4"
                             sources={objectiveSources}
                             dataTour="objective-chart"
@@ -975,10 +974,10 @@ const DashboardPage = () => {
                          </ChartCard>
                     </div>
 
-                     <div className="grid grid-cols-1 gap-6 h-[560px]">
+                     <div className="grid grid-cols-1 gap-6">
                          <ChartCard
                              title="Evolução do Financiamento por País Receptor"
-                             className="pb-8"
+                             className="min-h-[420px] pb-8 md:min-h-[520px] xl:h-[560px]"
                              sourceClassName="mt-4"
                              sources={lineSources}
                              dataTour="commitments-chart"

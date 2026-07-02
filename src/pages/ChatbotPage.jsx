@@ -461,7 +461,7 @@ const ChatbotPage = () => {
     return (
         <div className="flex flex-col h-screen bg-dark-bg text-dark-text p-4 md:p-6">
             <div className="flex flex-col gap-3 mb-6 md:flex-row md:items-center md:justify-between">
-                <h2 className="text-3xl font-bold text-white">Assistente IA de Dados Climáticos</h2>
+                <h2 className="text-2xl font-bold text-white md:text-3xl">Assistente CFC-GS</h2>
                 <button
                     type="button"
                     onClick={handleNewConversation}

@@ -82,10 +82,10 @@ const formatObjective = (objectiveValue) => {
     return 'N/A';
 };
 
-const SkeletonCell = ({ left, top }) => (
+const SkeletonCell = ({ left, top, width, height }) => (
     <div
         className="absolute"
-        style={{ left, top, width: CELL_WIDTH, height: ROW_HEIGHT }}
+        style={{ left, top, width, height }}
     >
         <div className="flex h-full w-full items-center justify-center rounded-[2px] border border-dark-border/60 bg-dark-bg/40">
             <div className="h-1.5 w-2/3 rounded-full bg-dark-border/70 animate-pulse" />
@@ -102,9 +102,6 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
         view = 'country_year',
     } = filters || {};
 
-    const isCountryColumns = view !== 'country_year';
-    const headerHeight = isCountryColumns ? COUNTRY_HEADER_HEIGHT : HEADER_HEIGHT;
-
     const containerRef = useRef(null);
     const scrollRef = useRef(null);
     const viewportRef = useRef(null);
@@ -116,6 +113,15 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
     const cacheRef = useRef(new Map());
     const inflightRef = useRef(new Map());
     const activeLoadRef = useRef(0);
+    const dragStateRef = useRef({
+        isDragging: false,
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        scrollLeft: 0,
+        scrollTop: 0,
+        moved: false,
+    });
 
     const [viewport, setViewport] = useState({ width: 0, height: 0 });
     const [limits, setLimits] = useState({
@@ -144,6 +150,16 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
         error: null,
     });
 
+    const isCountryColumns = view !== 'country_year';
+    const isCompactViewport = viewport.width > 0 && viewport.width < 768;
+    const cellWidth = isCompactViewport ? 30 : CELL_WIDTH;
+    const rowHeight = isCompactViewport ? 30 : ROW_HEIGHT;
+    const headerHeight = isCountryColumns
+        ? (isCompactViewport ? 92 : COUNTRY_HEADER_HEIGHT)
+        : (isCompactViewport ? 32 : HEADER_HEIGHT);
+    const labelWidth = isCompactViewport ? 136 : LABEL_WIDTH;
+    const totalWidth = isCompactViewport ? 104 : TOTAL_WIDTH;
+
     const filterKey = useMemo(() => JSON.stringify({
         years,
         countryIds,
@@ -160,8 +176,9 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
     const rowCount = sliceData?.row_count || rows.length || 0;
     const columnCount = sliceData?.column_count || columns.length || 0;
 
-    const gridWidth = Math.max(columnCount, columns.length, 1) * CELL_WIDTH;
-    const gridHeight = Math.max(rowCount, rows.length, 1) * ROW_HEIGHT;
+    const gridWidth = Math.max(columnCount, columns.length, 1) * cellWidth;
+    const gridHeight = Math.max(rowCount, rows.length, 1) * rowHeight;
+    const canDragGrid = rowCount > rows.length || columnCount > columns.length || gridWidth > viewport.width || gridHeight > viewport.height;
 
     const displayRowOffset = sliceData?.row_offset ?? rowOffset;
     const displayColumnOffset = sliceData?.column_offset ?? columnOffset;
@@ -251,8 +268,8 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
     const exportRows = hasData ? rows : [''];
     const exportColumns = hasData ? columns : [''];
     const exportPoints = hasData ? points : [];
-    const chartPixelHeight = Math.max(rows.length, 1) * ROW_HEIGHT;
-    const chartPixelWidth = Math.max(columns.length, 1) * CELL_WIDTH;
+    const chartPixelHeight = Math.max(rows.length, 1) * rowHeight;
+    const chartPixelWidth = Math.max(columns.length, 1) * cellWidth;
     const chartHeight = isFullscreen ? null : chartPixelHeight;
     const chartWidth = isFullscreen ? null : chartPixelWidth;
     const containerHeight = isFullscreen ? '100%' : chartPixelHeight;
@@ -328,8 +345,8 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
         const maxRowOffset = Math.max(rowCount - rowLimit, 0);
         const maxColumnOffset = Math.max(columnCount - columnLimit, 0);
 
-        const nextRowOffset = clamp(Math.floor(nextScrollTop / ROW_HEIGHT) - PREFETCH_BUFFER, 0, maxRowOffset);
-        const nextColumnOffset = clamp(Math.floor(nextScrollLeft / CELL_WIDTH) - PREFETCH_BUFFER, 0, maxColumnOffset);
+        const nextRowOffset = clamp(Math.floor(nextScrollTop / rowHeight) - PREFETCH_BUFFER, 0, maxRowOffset);
+        const nextColumnOffset = clamp(Math.floor(nextScrollLeft / cellWidth) - PREFETCH_BUFFER, 0, maxColumnOffset);
 
         if (nextRowOffset !== rowOffset) {
             setRowOffset(nextRowOffset);
@@ -337,7 +354,7 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
         if (nextColumnOffset !== columnOffset) {
             setColumnOffset(nextColumnOffset);
         }
-    }, [columnCount, columnLimit, rowCount, rowLimit, rowOffset, columnOffset]);
+    }, [cellWidth, columnCount, columnLimit, rowCount, rowHeight, rowLimit, rowOffset, columnOffset]);
 
     const handleScroll = useCallback((event) => {
         if (scrollRafRef.current) {
@@ -388,6 +405,69 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
             element.scrollLeft = clamp(element.scrollLeft + event.deltaX, 0, maxScrollLeft);
         }
     }, []);
+
+    const stopDrag = useCallback(() => {
+        dragStateRef.current = {
+            isDragging: false,
+            pointerId: null,
+            startX: 0,
+            startY: 0,
+            scrollLeft: 0,
+            scrollTop: 0,
+            moved: false,
+        };
+    }, []);
+
+    const handlePointerDown = useCallback((event) => {
+        const element = scrollRef.current;
+        if (!element || !canDragGrid) {
+            return;
+        }
+        const target = event.target;
+        if (target instanceof Element) {
+            const tooltipScroll = target.closest('[data-heatmap-scroll="projects"]');
+            if (tooltipScroll) {
+                return;
+            }
+        }
+        dragStateRef.current = {
+            isDragging: true,
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            scrollLeft: element.scrollLeft,
+            scrollTop: element.scrollTop,
+            moved: false,
+        };
+        element.setPointerCapture?.(event.pointerId);
+    }, [canDragGrid]);
+
+    const handlePointerMove = useCallback((event) => {
+        const element = scrollRef.current;
+        const dragState = dragStateRef.current;
+        if (!element || !dragState.isDragging || dragState.pointerId !== event.pointerId) {
+            return;
+        }
+        const deltaX = event.clientX - dragState.startX;
+        const deltaY = event.clientY - dragState.startY;
+        if (!dragState.moved && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
+            dragState.moved = true;
+        }
+        if (!dragState.moved) {
+            return;
+        }
+        event.preventDefault();
+        element.scrollLeft = dragState.scrollLeft - deltaX;
+        element.scrollTop = dragState.scrollTop - deltaY;
+    }, []);
+
+    const handlePointerUp = useCallback((event) => {
+        const element = scrollRef.current;
+        if (element && dragStateRef.current.pointerId === event.pointerId) {
+            element.releasePointerCapture?.(event.pointerId);
+        }
+        stopDrag();
+    }, [stopDrag]);
 
     const fetchSlice = useCallback(async (offsetRow, offsetColumn, { prefetch = false } = {}) => {
         if (loadingFilters) {
@@ -511,11 +591,11 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
         }
         const visibleRows = Math.max(
             1,
-            Math.floor((viewport.height - headerHeight) / ROW_HEIGHT),
+            Math.floor((viewport.height - headerHeight) / rowHeight),
         );
         const visibleColumns = Math.max(
             1,
-            Math.floor(viewport.width / CELL_WIDTH),
+            Math.floor(viewport.width / cellWidth),
         );
         const nextRowLimit = Math.min(
             Math.max(1, visibleRows + PREFETCH_BUFFER * 2),
@@ -532,7 +612,7 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
             return { rowLimit: nextRowLimit, columnLimit: nextColumnLimit };
         });
         setLimitsReady(true);
-    }, [headerHeight, viewport.height, viewport.width]);
+    }, [cellWidth, headerHeight, rowHeight, viewport.height, viewport.width]);
 
     useEffect(() => {
         cacheRef.current.clear();
@@ -1614,7 +1694,7 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
         };
     }, [tooltipStyle]);
 
-    const rowLabelOffset = (displayRowOffset * ROW_HEIGHT) - scrollTop;
+    const rowLabelOffset = (displayRowOffset * rowHeight) - scrollTop;
     const skeletonState = useMemo(() => {
         if (!isLoading || !sliceData || !rowCount || !columnCount || !viewport.width || !viewport.height) {
             return { cells: [], rows: [], columns: [] };
@@ -1622,11 +1702,11 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
 
         const scrollTopForRows = Math.max(scrollTop - headerHeight, 0);
         const scrollBottomForRows = Math.max(scrollTop + viewport.height - headerHeight, 0);
-        const visibleRowStart = clamp(Math.floor(scrollTopForRows / ROW_HEIGHT), 0, rowCount - 1);
-        const visibleRowEnd = clamp(Math.ceil(scrollBottomForRows / ROW_HEIGHT) - 1, 0, rowCount - 1);
+        const visibleRowStart = clamp(Math.floor(scrollTopForRows / rowHeight), 0, rowCount - 1);
+        const visibleRowEnd = clamp(Math.ceil(scrollBottomForRows / rowHeight) - 1, 0, rowCount - 1);
 
-        const visibleColumnStart = clamp(Math.floor(scrollLeft / CELL_WIDTH), 0, columnCount - 1);
-        const visibleColumnEnd = clamp(Math.ceil((scrollLeft + viewport.width) / CELL_WIDTH) - 1, 0, columnCount - 1);
+        const visibleColumnStart = clamp(Math.floor(scrollLeft / cellWidth), 0, columnCount - 1);
+        const visibleColumnEnd = clamp(Math.ceil((scrollLeft + viewport.width) / cellWidth) - 1, 0, columnCount - 1);
 
         const hasRowsLoaded = rows.length > 0;
         const hasColumnsLoaded = columns.length > 0;
@@ -1696,7 +1776,7 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
     const isReady = viewport.width > 0 && viewport.height > 0;
 
     return (
-        <div ref={containerRef} className="relative flex flex-col h-full min-h-0 overflow-visible">
+        <div ref={containerRef} className="relative flex h-full min-h-0 flex-col overflow-hidden">
             {showLoading && (
                 <div className="absolute inset-0 z-20 flex items-center justify-center bg-dark-bg/40">
                     <LoadingSpinner />
@@ -1731,13 +1811,13 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                     </div>
                     <div
                         ref={viewportRef}
-                        className="relative flex h-full w-full min-h-0 min-w-0 flex-1 border border-dark-border rounded-lg overflow-hidden"
+                        className="relative flex h-full w-full min-h-[460px] min-w-0 flex-1 border border-dark-border rounded-lg overflow-hidden md:min-h-[400px] xl:min-h-0"
                         style={{ isolation: 'isolate' }}
                         onWheelCapture={handleWheelCapture}
                     >
                         <div
                             className="absolute inset-y-0 left-0 z-20 bg-dark-card pointer-events-none"
-                            style={{ width: LABEL_WIDTH + TOTAL_WIDTH }}
+                        style={{ width: labelWidth + totalWidth }}
                         />
                         <div
                             className="absolute left-0 right-0 z-30 border-b border-dark-border pointer-events-none"
@@ -1745,7 +1825,7 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                         />
                         <div
                             className="relative z-40 flex h-full min-h-0 flex-shrink-0 flex-col bg-dark-card border-r border-dark-border shadow-[2px_0_6px_rgba(0,0,0,0.35)]"
-                            style={{ width: LABEL_WIDTH + TOTAL_WIDTH }}
+                            style={{ width: labelWidth + totalWidth }}
                         >
                             <div
                                 className="relative z-40 flex items-center text-xs text-dark-text-secondary border-b border-dark-border bg-dark-card"
@@ -1753,13 +1833,13 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                             >
                                 <span
                                     className="font-semibold flex-shrink-0 pl-2 pr-2"
-                                    style={{ width: LABEL_WIDTH }}
+                                    style={{ width: labelWidth }}
                                 >
                                     {view === 'country_year' ? 'País' : 'Ano'}
                                 </span>
                                 <span
                                     className="text-right font-semibold flex-shrink-0 whitespace-nowrap pl-2 pr-2"
-                                    style={{ width: TOTAL_WIDTH }}
+                                    style={{ width: totalWidth }}
                                 >
                                     Total projetos
                                 </span>
@@ -1773,19 +1853,19 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                                         <div
                                             key={`${row.label}-${index}`}
                                             className="flex items-center border-b border-dark-border text-xs"
-                                            style={{ height: ROW_HEIGHT }}
+                                            style={{ height: rowHeight }}
                                         >
                                             <span
                                                 className="text-dark-text truncate flex-shrink-0 pl-2 pr-2"
                                                 title={row.label}
-                                                style={{ width: LABEL_WIDTH }}
+                                                style={{ width: labelWidth }}
                                             >
                                                 {row.label}
                                             </span>
                                             <span
                                                 className="text-right text-dark-text-secondary flex-shrink-0 pl-2 pr-2"
                                                 title={`${row.projectCount} projetos`}
-                                                style={{ width: TOTAL_WIDTH }}
+                                                style={{ width: totalWidth }}
                                             >
                                                 {formatNumber(row.projectCount)}
                                             </span>
@@ -1799,8 +1879,8 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                                                 key={`skeleton-row-${rowIndex}`}
                                                 className="absolute left-0 right-0 flex items-center"
                                                 style={{
-                                                    top: rowIndex * ROW_HEIGHT - scrollTop,
-                                                    height: ROW_HEIGHT,
+                                                    top: rowIndex * rowHeight - scrollTop,
+                                                    height: rowHeight,
                                                 }}
                                             >
                                                 <div className="ml-2 h-1.5 w-24 rounded-full bg-dark-border/70 animate-pulse" />
@@ -1814,9 +1894,19 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
 
                     <div
                         ref={scrollRef}
-                        className="relative z-0 flex-1 min-h-0 min-w-0 h-full overflow-auto custom-scrollbar"
-                        style={{ scrollbarGutter: 'stable both-edges', overscrollBehavior: 'contain' }}
+                        className={`relative z-0 flex-1 min-h-0 min-w-0 h-full overflow-auto custom-scrollbar ${canDragGrid ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                        style={{
+                            scrollbarGutter: 'stable both-edges',
+                            overscrollBehavior: 'contain',
+                            touchAction: canDragGrid ? 'none' : 'auto',
+                            WebkitOverflowScrolling: 'touch',
+                        }}
                         onScroll={handleScroll}
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerUp}
+                        onPointerLeave={handlePointerUp}
                     >
                         <div
                             style={{
@@ -1834,8 +1924,8 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                                         className="grid"
                                         style={{
                                             position: 'absolute',
-                                            left: displayColumnOffset * CELL_WIDTH,
-                                            gridTemplateColumns: `repeat(${columns.length}, ${CELL_WIDTH}px)`,
+                                            left: displayColumnOffset * cellWidth,
+                                            gridTemplateColumns: `repeat(${columns.length}, ${cellWidth}px)`,
                                             height: headerHeight,
                                         }}
                                     >
@@ -1875,8 +1965,8 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                                                     key={`skeleton-col-${columnIndex}`}
                                                     className="absolute flex items-center justify-center"
                                                     style={{
-                                                        left: columnIndex * CELL_WIDTH,
-                                                        width: CELL_WIDTH,
+                                                        left: columnIndex * cellWidth,
+                                                        width: cellWidth,
                                                         height: headerHeight,
                                                     }}
                                                 >
@@ -1910,8 +2000,8 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                                     <div
                                         style={{
                                             position: 'absolute',
-                                            top: displayRowOffset * ROW_HEIGHT,
-                                            left: displayColumnOffset * CELL_WIDTH,
+                                            top: displayRowOffset * rowHeight,
+                                            left: displayColumnOffset * cellWidth,
                                         }}
                                     >
                                         <div
@@ -1936,8 +2026,8 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                                                 <div className="absolute inset-0 z-10 pointer-events-none">
                                                     {points.map((point) => {
                                                         const cell = point.custom;
-                                                        const left = point.x * CELL_WIDTH;
-                                                        const top = point.y * ROW_HEIGHT;
+                                                        const left = point.x * cellWidth;
+                                                        const top = point.y * rowHeight;
                                                         const key = `${cell?.year ?? 'y'}-${cell?.country_id ?? 'c'}-${point.x}-${point.y}`;
                                                         return (
                                                             <div
@@ -1946,8 +2036,8 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                                                                 style={{
                                                                     left,
                                                                     top,
-                                                                    width: CELL_WIDTH,
-                                                                    height: ROW_HEIGHT,
+                                                                    width: cellWidth,
+                                                                    height: rowHeight,
                                                                 }}
                                                                 onMouseEnter={(event) => {
                                                                     const rect = event.currentTarget.getBoundingClientRect();
@@ -1975,8 +2065,10 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                                         {skeletonCells.map((cell) => (
                                             <SkeletonCell
                                                 key={`s-${cell.rowIndex}-${cell.columnIndex}`}
-                                                left={cell.columnIndex * CELL_WIDTH}
-                                                top={cell.rowIndex * ROW_HEIGHT}
+                                                left={cell.columnIndex * cellWidth}
+                                                top={cell.rowIndex * rowHeight}
+                                                width={cellWidth}
+                                                height={rowHeight}
                                             />
                                         ))}
                                     </div>

@@ -26,13 +26,84 @@ const parseEnvFlag = (value) => {
 
 const VIEW_LABELS = {
     dashboard: 'Dashboard',
-    chatbot: 'Assistente IA',
+    chatbot: 'Assistente CFC-GS',
     datagrid: 'Tabelas completas',
     admin: 'Gestão da Plataforma',
 };
 
+const isRenderableTourElement = (element) => {
+    if (!(element instanceof HTMLElement)) return false;
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    return (
+        rect.width > 0 &&
+        rect.height > 0 &&
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        style.opacity !== '0'
+    );
+};
+
+const findTourElement = (selector) => {
+    if (!selector || typeof document === 'undefined') return null;
+    const elements = Array.from(document.querySelectorAll(selector));
+    return elements.find((element) => isRenderableTourElement(element)) || null;
+};
+
+const findVisibleTourElement = (selector) => {
+    if (!selector || typeof document === 'undefined') return null;
+    const elements = Array.from(document.querySelectorAll(selector));
+    return elements.find((element) => {
+        if (!isRenderableTourElement(element)) return false;
+        const rect = element.getBoundingClientRect();
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+        return (
+            rect.bottom > 0 &&
+            rect.right > 0 &&
+            rect.top < viewportHeight &&
+            rect.left < viewportWidth
+        );
+    }) || null;
+};
+
+const findVisibleTourElements = (selector) => {
+    if (!selector || typeof document === 'undefined') return [];
+    return Array.from(document.querySelectorAll(selector)).filter((element) => {
+        if (!isRenderableTourElement(element)) return false;
+        const rect = element.getBoundingClientRect();
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+        return (
+            rect.bottom > 0 &&
+            rect.right > 0 &&
+            rect.top < viewportHeight &&
+            rect.left < viewportWidth
+        );
+    });
+};
+
+const areRectsEqual = (left, right) => {
+    if (left === right) return true;
+    if (!Array.isArray(left) || !Array.isArray(right)) return false;
+    if (left.length !== right.length) return false;
+
+    return left.every((rect, index) => {
+        const other = right[index];
+        if (!other) return false;
+        return (
+            rect.top === other.top &&
+            rect.left === other.left &&
+            rect.width === other.width &&
+            rect.height === other.height
+        );
+    });
+};
+
 function App() {
     const [activeView, setActiveView] = useState('dashboard');
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
+    const [isMobileNavMode, setIsMobileNavMode] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
     const [loginModalOpen, setLoginModalOpen] = useState(false);
@@ -53,7 +124,18 @@ function App() {
     const [filterProgress, setFilterProgress] = useState({});
     const [resumeHint, setResumeHint] = useState(false);
     const [resumeHintRect, setResumeHintRect] = useState(null);
+    const [pendingResumeFocus, setPendingResumeFocus] = useState(false);
     const mainRef = useRef(null);
+    const evaluationFormUrl = useMemo(() => {
+        const rawValue = String(import.meta.env.VITE_EVALUATION_FORM_URL || '').trim();
+        if (!rawValue) return '';
+        const normalizedValue = rawValue.replace(/^['"]|['"]$/g, '');
+        return normalizedValue.trim();
+    }, []);
+
+    useEffect(() => {
+        console.log('[tutorial] evaluation form url:', evaluationFormUrl);
+    }, [evaluationFormUrl]);
 
     useEffect(() => {
         const sources = [EcoBotSaudando, EcoBotExplicando, EcoBotFinalizando];
@@ -76,6 +158,34 @@ function App() {
         };
 
         bootstrapAuth();
+    }, []);
+
+    useEffect(() => {
+        if (!mobileNavOpen) return undefined;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                setMobileNavOpen(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleEscape);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleEscape);
+        };
+    }, [mobileNavOpen]);
+
+    useEffect(() => {
+        const updateViewportMode = () => {
+            setIsMobileNavMode(window.innerWidth < 768);
+        };
+
+        updateViewportMode();
+        window.addEventListener('resize', updateViewportMode);
+        return () => window.removeEventListener('resize', updateViewportMode);
     }, []);
 
     const handleLoginSubmit = useCallback(async ({ username, password }) => {
@@ -225,7 +335,7 @@ function App() {
             view: 'chatbot',
             selector: '[data-tour="chatbot-input"]',
             focusSelector: '[data-tour="chatbot-input"]',
-            title: 'Assistente IA',
+            title: 'Assistente CFC-GS',
             text: 'Faça pelo menos uma pergunta ao assistente.',
             image: EcoBotExplicando,
             placement: 'top',
@@ -288,11 +398,19 @@ function App() {
             const navSelector = navSelectorByView[currentStep.view];
             return {
                 ...currentStep,
-                selector: navSelector,
-                focusSelector: navSelector,
+                selector: isMobileNavMode && !mobileNavOpen
+                    ? '[data-tour="mobile-nav-toggle"]'
+                    : navSelector,
+                focusSelector: isMobileNavMode && !mobileNavOpen
+                    ? '[data-tour="mobile-nav-toggle"]'
+                    : navSelector,
                 title: 'Ir para a página',
-                text: `No menu lateral à esquerda, clique em ${VIEW_LABELS[currentStep.view] || currentStep.view} para continuar.`,
-                placement: 'right',
+                text: isMobileNavMode
+                    ? mobileNavOpen
+                        ? `Toque em ${VIEW_LABELS[currentStep.view] || currentStep.view} dentro do menu para continuar.`
+                        : `Abra o menu pelo botão hambúrguer para continuar.`
+                    : `No menu lateral à esquerda, clique em ${VIEW_LABELS[currentStep.view] || currentStep.view} para continuar.`,
+                placement: isMobileNavMode ? 'bottom' : 'right',
             };
         }
         if (currentStep.id === 'datagrid') {
@@ -304,23 +422,54 @@ function App() {
             };
         }
         return currentStep;
-    }, [currentStep, stepNeedsNavigation, navSelectorByView]);
+    }, [currentStep, isMobileNavMode, mobileNavOpen, stepNeedsNavigation, navSelectorByView]);
     const requiresCompletion = Boolean(
         currentStep?.completion && currentStep.completion.type !== 'none'
     );
     const canAdvanceStep = !stepNeedsNavigation && (!requiresCompletion || stepCompleted);
 
+    const scrollMainToTourElement = useCallback((element, behavior = 'smooth') => {
+        if (!(element instanceof HTMLElement)) return;
+
+        const mainElement = mainRef.current;
+        if (mainElement instanceof HTMLElement) {
+            const mainRect = mainElement.getBoundingClientRect();
+            const elementRect = element.getBoundingClientRect();
+            const offsetTop = 24;
+            const targetTop = (
+                mainElement.scrollTop +
+                (elementRect.top - mainRect.top) -
+                offsetTop
+            );
+
+            mainElement.scrollTo({
+                top: Math.max(0, targetTop),
+                behavior,
+            });
+        }
+
+        window.requestAnimationFrame(() => {
+            element.scrollIntoView({
+                behavior,
+                block: 'center',
+                inline: 'center',
+            });
+        });
+    }, []);
+
     useEffect(() => {
         if (!resolvedStep || !resolvedStep.selector) return;
-        const element = document.querySelector(resolvedStep.selector);
+        const element = findTourElement(resolvedStep.selector);
         if (!element) return;
         const timer = setTimeout(() => {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            if (currentStep?.id !== 'welcome') {
+                scrollMainToTourElement(element, 'smooth');
+            }
         }, 150);
         return () => {
             clearTimeout(timer);
         };
-    }, [resolvedStep]);
+    }, [currentStep?.id, resolvedStep, scrollMainToTourElement]);
 
     useEffect(() => {
         if (!currentStep) return;
@@ -333,6 +482,15 @@ function App() {
         setInteractionMode(false);
         setFilterProgress({});
     }, [currentStep?.id, requiresCompletion]);
+
+    useEffect(() => {
+        if (mainRef.current) {
+            mainRef.current.scrollTo({ top: 0, behavior: 'auto' });
+        }
+        if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+    }, []);
 
     useEffect(() => {
         if (!currentStep) return;
@@ -419,14 +577,15 @@ function App() {
         let rafId = null;
         const updateTarget = () => {
             if (stepNeedsNavigation) {
-                const navElement = document.querySelector(navSelectorByView[currentStep.view]);
-                if (!navElement) {
+                const navigationSelector = resolvedStep?.focusSelector || resolvedStep?.selector;
+                const navigationElement = findVisibleTourElement(navigationSelector);
+                if (!navigationElement) {
                     setTourTarget(null);
                     setFocusRect(null);
                     setHighlightRects([]);
                     return;
                 }
-                const navRect = navElement.getBoundingClientRect();
+                const navRect = navigationElement.getBoundingClientRect();
                 setTourTarget(navRect);
                 setFocusRect(navRect);
                 setHighlightRects([navRect]);
@@ -439,10 +598,10 @@ function App() {
                 setHighlightRects([]);
                 return;
             }
-            const elements = Array.from(document.querySelectorAll(resolvedStep.selector));
+            const elements = findVisibleTourElements(resolvedStep.selector);
             if (!elements.length) {
                 if (currentStep?.id === 'datagrid') {
-                    const navElement = document.querySelector(navSelectorByView.datagrid);
+                    const navElement = findVisibleTourElement(navSelectorByView.datagrid);
                     if (navElement) {
                         const navRect = navElement.getBoundingClientRect();
                         setTourTarget(navRect);
@@ -465,7 +624,7 @@ function App() {
             };
 
             const focusElements = resolvedStep.focusSelector
-                ? Array.from(document.querySelectorAll(resolvedStep.focusSelector))
+                ? findVisibleTourElements(resolvedStep.focusSelector)
                 : elements;
             const focusAnchor = focusElements[0]?.getBoundingClientRect();
             const focusRectNext = focusAnchor
@@ -489,9 +648,21 @@ function App() {
                 }
                 return rect;
             });
-            setHighlightRects(
-                elements.map((el) => el.getBoundingClientRect())
-            );
+            const highlightRectsNext = elements.map((el) => {
+                const highlightRect = el.getBoundingClientRect();
+                return {
+                    top: highlightRect.top,
+                    left: highlightRect.left,
+                    width: highlightRect.width,
+                    height: highlightRect.height,
+                };
+            });
+
+            setHighlightRects((prev) => (
+                areRectsEqual(prev, highlightRectsNext)
+                    ? prev
+                    : highlightRectsNext
+            ));
 
             setFocusRect((prev) => {
                 if (!prev) return focusRectNext;
@@ -516,35 +687,59 @@ function App() {
         window.addEventListener('resize', scheduleUpdate);
         window.addEventListener('scroll', scheduleUpdate, { passive: true });
         document.addEventListener('scroll', scheduleUpdate, true);
+        const observer = new MutationObserver(scheduleUpdate);
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+        });
 
         return () => {
             if (rafId) cancelAnimationFrame(rafId);
             window.removeEventListener('resize', scheduleUpdate);
             window.removeEventListener('scroll', scheduleUpdate);
             document.removeEventListener('scroll', scheduleUpdate, true);
+            observer.disconnect();
         };
-    }, [resolvedStep?.id, stepNeedsNavigation, navSelectorByView, currentStep?.view]);
+    }, [resolvedStep?.focusSelector, resolvedStep?.id, resolvedStep?.selector, stepNeedsNavigation]);
 
-    const showTourPopup = Boolean(
+    const showTourHighlight = Boolean(
         resolvedStep &&
         tourActive &&
         tourVisible &&
-        !interactionMode &&
+        (!interactionMode || stepNeedsNavigation) &&
         (!resolvedStep.selector || stepNeedsNavigation || tourTarget)
+    );
+    const showTourPopup = Boolean(
+        showTourHighlight &&
+        !interactionMode &&
+        !(stepNeedsNavigation && isMobileNavMode && mobileNavOpen)
     );
     const isLastStepInPhase = Boolean(
         currentStep && tourStepIndex >= phaseSteps.length - 1
+    );
+    const allowsDirectStepInteraction = Boolean(
+        currentStep && ['heatmap-export', 'datagrid'].includes(currentStep.id)
     );
     const shouldBlockInteractions = Boolean(
         tourActive &&
         tourVisible &&
         requiresCompletion &&
         !stepNeedsNavigation &&
-        !interactionMode
+        !interactionMode &&
+        !allowsDirectStepInteraction
     );
 
     const bubbleStyle = useMemo(() => {
         if (!resolvedStep || !tourTarget) {
+            if (isMobileNavMode) {
+                return {
+                    top: 88,
+                    left: 12,
+                    right: 12,
+                    transform: 'none',
+                };
+            }
             return {
                 top: '18%',
                 left: '50%',
@@ -588,7 +783,29 @@ function App() {
 
         let placement = placements[resolvedStep.placement] || placements.right;
         if (stepNeedsNavigation) {
-            placement = placements.right;
+            placement = isMobileNavMode
+                ? {
+                    top: 88,
+                    left: 12,
+                    right: 12,
+                    transform: 'none',
+                }
+                : {
+                    top: Math.max(24, rect.top),
+                    left: Math.min(rect.right + offset + 8, viewportWidth - maxWidth - 12),
+                    transform: 'none',
+                };
+        }
+        if (isMobileNavMode) {
+            return {
+                ...placement,
+                top: typeof placement.top === 'number'
+                    ? Math.min(Math.max(12, placement.top), viewportHeight - maxHeight - 12)
+                    : placement.top,
+                left: 12,
+                right: 12,
+                transform: 'none',
+            };
         }
         if (placement === placements.right && rect.right + offset + maxWidth > viewportWidth) {
             placement = placements.left;
@@ -605,7 +822,7 @@ function App() {
         const left = Math.min(Math.max(12, placement.left), viewportWidth - maxWidth - 12);
         const top = Math.min(Math.max(12, placement.top), viewportHeight - maxHeight - 12);
         return { ...placement, left, top };
-    }, [resolvedStep, stepNeedsNavigation, tourTarget]);
+    }, [isMobileNavMode, resolvedStep, stepNeedsNavigation, tourTarget]);
 
     const startTour = useCallback(() => {
         setTourActive(true);
@@ -630,6 +847,20 @@ function App() {
 
     const handleTourNext = useCallback(() => {
         if (!currentStep) return;
+        const shouldAdvanceAfterClosingMobileMenu = Boolean(
+            isMobileNavMode &&
+            mobileNavOpen &&
+            currentStep.id === 'welcome'
+        );
+
+        if (shouldAdvanceAfterClosingMobileMenu) {
+            setMobileNavOpen(false);
+            window.setTimeout(() => {
+                setTourStepIndex((prev) => prev + 1);
+            }, 220);
+            return;
+        }
+
         const isLastStep = tourStepIndex >= phaseSteps.length - 1;
         if (!isLastStep) {
             setTourStepIndex((prev) => prev + 1);
@@ -648,7 +879,15 @@ function App() {
             setTourStepIndex(0);
             setResumeHint(true);
         }
-    }, [currentStep, phaseSteps.length, tourPhase, totalPhases, tourStepIndex]);
+    }, [
+        currentStep,
+        isMobileNavMode,
+        mobileNavOpen,
+        phaseSteps.length,
+        tourPhase,
+        totalPhases,
+        tourStepIndex,
+    ]);
 
     const handleTourClose = useCallback(() => {
         setTourVisible(false);
@@ -664,6 +903,26 @@ function App() {
         setTourPhase(0);
         setTourStepIndex(0);
     }, []);
+
+    const handleTutorialToggle = useCallback(() => {
+        const isResumingOnMobile = Boolean(
+            isMobileNavMode &&
+            tourActive &&
+            !tourVisible
+        );
+
+        if (isResumingOnMobile) {
+            setResumeHint(false);
+            setPendingResumeFocus(true);
+            setMobileNavOpen(false);
+            window.setTimeout(() => {
+                setTourVisible(true);
+            }, 220);
+            return;
+        }
+
+        toggleTour();
+    }, [isMobileNavMode, toggleTour, tourActive, tourVisible]);
 
     const renderActiveView = () => {
         switch (activeView) {
@@ -697,7 +956,13 @@ function App() {
             ? <FiPause className="text-lg" />
             : <FiPlay className="text-lg" />
         : <FiCompass className="text-lg" />;
-
+    const resumeHintSelector = useMemo(() => {
+        if (!resumeHint) return null;
+        if (isMobileNavMode && !mobileNavOpen) {
+            return '[data-tour="mobile-nav-toggle"]';
+        }
+        return '[data-tour="tutorial-toggle"]';
+    }, [isMobileNavMode, mobileNavOpen, resumeHint]);
     const focusBlockers = useMemo(() => [], []);
 
     useEffect(() => {
@@ -705,23 +970,57 @@ function App() {
             setResumeHintRect(null);
             return undefined;
         }
-        const element = document.querySelector('[data-tour="tutorial-toggle"]');
-        if (!element) {
+        const highlightDelay = isMobileNavMode && mobileNavOpen ? 260 : 0;
+        const timer = window.setTimeout(() => {
+            const element = resumeHintSelector
+                ? findVisibleTourElement(resumeHintSelector)
+                : null;
+            if (!element) {
+                return;
+            }
+            if (resumeHintSelector === '[data-tour="tutorial-toggle"]') {
+                element.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest',
+                });
+            }
+            const rect = element.getBoundingClientRect();
+            setResumeHintRect(rect);
+        }, highlightDelay);
+
+        const dismissTimer = window.setTimeout(() => {
+            setResumeHint(false);
+        }, 4000);
+
+        return () => {
+            clearTimeout(timer);
+            clearTimeout(dismissTimer);
+        };
+    }, [isMobileNavMode, mobileNavOpen, resumeHint, resumeHintSelector]);
+
+    useEffect(() => {
+        if (!pendingResumeFocus || !tourVisible || !resolvedStep?.selector) {
             return undefined;
         }
-        const rect = element.getBoundingClientRect();
-        setResumeHintRect(rect);
-        const timer = setTimeout(() => {
-            setResumeHint(false);
-        }, 2500);
+
+        const timer = window.setTimeout(() => {
+            const element = findTourElement(resolvedStep.selector);
+            if (element) {
+                scrollMainToTourElement(element, 'smooth');
+            }
+            setPendingResumeFocus(false);
+        }, 260);
+
         return () => clearTimeout(timer);
-    }, [resumeHint]);
+    }, [pendingResumeFocus, resolvedStep, scrollMainToTourElement, tourVisible]);
 
     return (
         <div className="relative flex min-h-screen bg-dark-bg text-dark-text">
             <SideNav
                 activeView={activeView}
                 onNavChange={(view) => {
+                    setMobileNavOpen(false);
                     if (view === 'admin' && !currentUser) {
                         handleAdminAccess();
                         return;
@@ -729,11 +1028,17 @@ function App() {
                     setActiveView(view);
                 }}
                 showAdminEntry={Boolean(currentUser)}
+                isMobileOpen={mobileNavOpen}
+                onOpenMobile={() => setMobileNavOpen(true)}
+                onCloseMobile={() => setMobileNavOpen(false)}
                 footer={
                     <div className="space-y-3">
                         <button
                             type="button"
-                            onClick={handleAdminAccess}
+                            onClick={() => {
+                                setMobileNavOpen(false);
+                                handleAdminAccess();
+                            }}
                             className="w-full flex items-center justify-center gap-2 rounded-full border border-accent-blue/30 bg-dark-card/95 px-4 py-3 text-sm font-semibold text-accent-blue shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-dark-card"
                         >
                             <FiShield /> Gestão
@@ -741,7 +1046,7 @@ function App() {
                         {tutorialEnabled ? (
                             <button
                                 type="button"
-                                onClick={toggleTour}
+                                onClick={handleTutorialToggle}
                                 data-tour="tutorial-toggle"
                                 className="w-full flex items-center justify-center gap-2 rounded-full border border-accent-blue/40 bg-dark-card/90 px-4 py-3 text-sm font-semibold text-accent-blue shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-dark-card"
                             >
@@ -752,11 +1057,11 @@ function App() {
                     </div>
                 }
             />
-            <main ref={mainRef} className="flex-1 overflow-y-auto">
+            <main ref={mainRef} className="min-w-0 flex-1 overflow-y-auto pt-20 md:pt-0">
                 {renderActiveView()}
             </main>
 
-            <div className="fixed right-6 top-6 z-[80] flex items-center gap-3">
+            <div className="fixed right-4 top-4 z-[80] flex items-center gap-2 md:right-6 md:top-6 md:gap-3">
                 {currentUser ? (
                     <>
                         <button
@@ -777,8 +1082,19 @@ function App() {
                         </button>
                         <button
                             type="button"
+                            onClick={() => {
+                                setAdminInitialTab('profile');
+                                setActiveView('admin');
+                            }}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-dark-border bg-dark-card/95 text-dark-text shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:border-accent-blue/30 hover:bg-dark-card md:hidden"
+                            aria-label="Abrir meu perfil"
+                        >
+                            <FiUser />
+                        </button>
+                        <button
+                            type="button"
                             onClick={handleLogout}
-                            className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-dark-card/95 px-4 py-3 text-sm font-semibold text-dark-text-secondary shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:text-dark-text"
+                            className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-dark-card/95 px-3 py-3 text-sm font-semibold text-dark-text-secondary shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:text-dark-text md:px-4"
                         >
                             Sair
                         </button>
@@ -786,12 +1102,11 @@ function App() {
                 ) : null}
             </div>
 
-            {tourCompleted && activeView === 'dashboard' && import.meta.env.VITE_EVALUATION_FORM_URL && (
+            {tourCompleted && evaluationFormUrl && (
                 <button
                     type="button"
                     onClick={() => {
-                        const url = import.meta.env.VITE_EVALUATION_FORM_URL;
-                        window.open(url, '_blank', 'noopener,noreferrer');
+                        window.open(evaluationFormUrl, '_blank', 'noopener,noreferrer');
                     }}
                     className="fixed bottom-6 right-6 z-[70] rounded-full bg-accent-blue/90 px-1 py-1 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(88,166,255,0.35)] transition hover:opacity-95 animate-eval-pop"
                 >
@@ -801,12 +1116,12 @@ function App() {
                 </button>
             )}
 
-            {showTourPopup && resolvedStep && (
+            {showTourHighlight && resolvedStep && (
                 <>
                     {highlightRects.map((rect, index) => (
                         <div
                             key={`highlight-${index}`}
-                            className="fixed z-[60] rounded-2xl border-2 border-accent-blue/80 shadow-[0_0_24px_rgba(88,166,255,0.45)] pointer-events-none"
+                            className="fixed z-[130] rounded-2xl border-2 border-accent-blue/80 shadow-[0_0_24px_rgba(88,166,255,0.45)] pointer-events-none"
                             style={{
                                 top: Math.max(rect.top - 8, 0),
                                 left: Math.max(rect.left - 8, 0),
@@ -816,23 +1131,24 @@ function App() {
                             }}
                         />
                     ))}
+                    {showTourPopup && (
                     <div
                         key={resolvedStep.id}
-                        className="fixed z-[75] w-[440px] max-w-[92vw] rounded-2xl border border-dark-border bg-dark-card/95 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.55)] animate-tour-drop"
+                        className="fixed z-[145] w-auto max-w-[440px] max-h-[calc(100vh-24px)] overflow-y-auto rounded-2xl border border-dark-border bg-dark-card/95 p-3 shadow-[0_24px_70px_rgba(0,0,0,0.55)] animate-tour-drop sm:w-[min(92vw,440px)] sm:p-4 md:p-5"
                         style={{ ...bubbleStyle }}
                     >
-                        <div className="flex items-start gap-4">
+                        <div className="flex flex-col items-start gap-3 sm:flex-row sm:gap-4">
                             <img
                                 src={resolvedStep.image}
                                 alt="EcoBot"
-                                className="h-32 w-32 flex-shrink-0"
+                                className="h-20 w-20 flex-shrink-0 self-center sm:h-24 sm:w-24 md:h-32 md:w-32"
                             />
                             <div className="flex-1">
                                 <div className="text-xs uppercase tracking-[0.16em] text-accent-blue">
                                     Etapa {tourPhase + 1} de {totalPhases} · Passo {tourStepIndex + 1} de {phaseSteps.length}
                                 </div>
-                                <h4 className="mt-1 text-base font-semibold text-dark-text">{resolvedStep.title}</h4>
-                                <p className="mt-2 text-sm text-dark-text-secondary">{resolvedStep.text}</p>
+                                <h4 className="mt-1 text-sm font-semibold text-dark-text sm:text-base">{resolvedStep.title}</h4>
+                                <p className="mt-2 text-xs leading-relaxed text-dark-text-secondary sm:text-sm">{resolvedStep.text}</p>
                                 {requiresCompletion && stepCompleted && !stepNeedsNavigation && (
                                     <div className="mt-3 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-xs text-green-200">
                                         Muito bem! Você concluiu a tarefa. Clique em “Próximo” para continuar.
@@ -840,7 +1156,15 @@ function App() {
                                 )}
                                 {stepNeedsNavigation && (
                                     <div className="mt-3 rounded-lg border border-accent-blue/30 bg-accent-blue/10 px-3 py-2 text-xs text-accent-blue">
-                                        Use o menu lateral à esquerda para ir para <strong>{VIEW_LABELS[currentStep.view] || currentStep.view}</strong> e continuar.
+                                        {isMobileNavMode ? (
+                                            <>
+                                                Abra o menu pelo botão hambúrguer e toque em <strong>{VIEW_LABELS[currentStep.view] || currentStep.view}</strong> para continuar.
+                                            </>
+                                        ) : (
+                                            <>
+                                                Use o menu lateral à esquerda para ir para <strong>{VIEW_LABELS[currentStep.view] || currentStep.view}</strong> e continuar.
+                                            </>
+                                        )}
                                     </div>
                                 )}
                                 {isLastStepInPhase && stepCompleted && !stepNeedsNavigation && tourPhase < totalPhases - 1 && (
@@ -902,17 +1226,18 @@ function App() {
                             </div>
                         </div>
                     </div>
+                    )}
                 </>
             )}
 
             {shouldBlockInteractions && (
-                <div className="fixed inset-0 z-[70] pointer-events-auto bg-transparent" />
+                <div className="fixed inset-0 z-[120] pointer-events-auto bg-transparent" />
             )}
 
             {resumeHint && resumeHintRect && (
                 <>
                     <div
-                        className="fixed z-[80] rounded-2xl border-2 border-accent-blue/80 shadow-[0_0_20px_rgba(88,166,255,0.45)] pointer-events-none"
+                        className="fixed z-[130] rounded-2xl border-2 border-accent-blue/80 shadow-[0_0_20px_rgba(88,166,255,0.45)] pointer-events-none"
                         style={{
                             top: Math.max(resumeHintRect.top - 8, 0),
                             left: Math.max(resumeHintRect.left - 8, 0),
@@ -921,13 +1246,17 @@ function App() {
                         }}
                     />
                     <div
-                        className="fixed z-[80] rounded-xl border border-dark-border bg-dark-card/95 px-3 py-2 text-xs text-dark-text-secondary shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+                        className="fixed z-[145] rounded-xl border border-dark-border bg-dark-card/95 px-3 py-2 text-xs text-dark-text-secondary shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
                         style={{
                             top: Math.max(resumeHintRect.top - 46, 12),
                             left: Math.min(resumeHintRect.left, window.innerWidth - 240),
                         }}
                     >
-                        Clique em <strong>Retomar tutorial</strong> para seguir.
+                        {isMobileNavMode && !mobileNavOpen ? (
+                            <>Abra o <strong>menu</strong> para retomar o tutorial.</>
+                        ) : (
+                            <>Clique em <strong>Retomar tutorial</strong> para seguir.</>
+                        )}
                     </div>
                 </>
             )}
