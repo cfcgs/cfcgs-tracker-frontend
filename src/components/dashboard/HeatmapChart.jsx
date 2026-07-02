@@ -113,6 +113,7 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
     const cacheRef = useRef(new Map());
     const inflightRef = useRef(new Map());
     const activeLoadRef = useRef(0);
+    const suppressClickUntilRef = useRef(0);
     const dragStateRef = useRef({
         isDragging: false,
         pointerId: null,
@@ -141,6 +142,7 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
     const [pinnedKey, setPinnedKey] = useState(null);
     const [showProjects, setShowProjects] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isDragEngaged, setIsDragEngaged] = useState(false);
     const [projectState, setProjectState] = useState({
         key: null,
         projects: [],
@@ -152,13 +154,20 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
 
     const isCountryColumns = view !== 'country_year';
     const isCompactViewport = viewport.width > 0 && viewport.width < 768;
-    const cellWidth = isCompactViewport ? 30 : CELL_WIDTH;
-    const rowHeight = isCompactViewport ? 30 : ROW_HEIGHT;
+    const isSmallCompactViewport = viewport.width > 0 && viewport.width <= 420;
+    const isUltraCompactViewport = viewport.width > 0 && viewport.width <= 360;
+    const cellWidth = isUltraCompactViewport ? 24 : isSmallCompactViewport ? 26 : isCompactViewport ? 30 : CELL_WIDTH;
+    const rowHeight = isUltraCompactViewport ? 24 : isSmallCompactViewport ? 26 : isCompactViewport ? 30 : ROW_HEIGHT;
     const headerHeight = isCountryColumns
-        ? (isCompactViewport ? 92 : COUNTRY_HEADER_HEIGHT)
-        : (isCompactViewport ? 32 : HEADER_HEIGHT);
-    const labelWidth = isCompactViewport ? 136 : LABEL_WIDTH;
-    const totalWidth = isCompactViewport ? 104 : TOTAL_WIDTH;
+        ? (isUltraCompactViewport ? 76 : isSmallCompactViewport ? 84 : isCompactViewport ? 92 : COUNTRY_HEADER_HEIGHT)
+        : (isUltraCompactViewport ? 28 : isCompactViewport ? 32 : HEADER_HEIGHT);
+    const labelWidth = isUltraCompactViewport ? 92 : isSmallCompactViewport ? 108 : isCompactViewport ? 136 : LABEL_WIDTH;
+    const totalWidth = isUltraCompactViewport ? 62 : isSmallCompactViewport ? 74 : isCompactViewport ? 104 : TOTAL_WIDTH;
+    const totalProjectsHeader = isUltraCompactViewport
+        ? 'Proj.'
+        : isSmallCompactViewport
+            ? 'Projetos'
+            : 'Total projetos';
 
     const filterKey = useMemo(() => JSON.stringify({
         years,
@@ -407,6 +416,7 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
     }, []);
 
     const stopDrag = useCallback(() => {
+        setIsDragEngaged(false);
         dragStateRef.current = {
             isDragging: false,
             pointerId: null,
@@ -416,6 +426,10 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
             scrollTop: 0,
             moved: false,
         };
+    }, []);
+
+    const shouldSuppressClickAfterDrag = useCallback(() => {
+        return Date.now() < suppressClickUntilRef.current;
     }, []);
 
     const handlePointerDown = useCallback((event) => {
@@ -439,7 +453,6 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
             scrollTop: element.scrollTop,
             moved: false,
         };
-        element.setPointerCapture?.(event.pointerId);
     }, [canDragGrid]);
 
     const handlePointerMove = useCallback((event) => {
@@ -452,6 +465,8 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
         const deltaY = event.clientY - dragState.startY;
         if (!dragState.moved && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
             dragState.moved = true;
+            setIsDragEngaged(true);
+            element.setPointerCapture?.(event.pointerId);
         }
         if (!dragState.moved) {
             return;
@@ -463,8 +478,12 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
 
     const handlePointerUp = useCallback((event) => {
         const element = scrollRef.current;
+        const wasDragging = dragStateRef.current.moved;
         if (element && dragStateRef.current.pointerId === event.pointerId) {
             element.releasePointerCapture?.(event.pointerId);
+        }
+        if (wasDragging) {
+            suppressClickUntilRef.current = Date.now() + 220;
         }
         stopDrag();
     }, [stopDrag]);
@@ -783,6 +802,9 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
     }, [getTooltipKeyFromCell, pinnedKey]);
 
     const handleCellClick = useCallback((cell, anchor, source = 'overlay') => {
+        if (shouldSuppressClickAfterDrag()) {
+            return;
+        }
         if (!cell) {
             console.log('[heatmap] click ignorado: celula vazia', { source });
             return;
@@ -838,6 +860,7 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
         rowOffset,
         rows.length,
         columns.length,
+        shouldSuppressClickAfterDrag,
         sliceData?.row_offset,
         sliceData?.column_offset,
     ]);
@@ -1832,16 +1855,16 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                                 style={{ height: headerHeight }}
                             >
                                 <span
-                                    className="font-semibold flex-shrink-0 pl-2 pr-2"
+                                    className="font-semibold flex-shrink-0 pl-1 pr-1.5 sm:pl-2 sm:pr-2"
                                     style={{ width: labelWidth }}
                                 >
                                     {view === 'country_year' ? 'País' : 'Ano'}
                                 </span>
                                 <span
-                                    className="text-right font-semibold flex-shrink-0 whitespace-nowrap pl-2 pr-2"
+                                    className="text-right font-semibold flex-shrink-0 whitespace-nowrap pl-1 pr-1.5 text-[10px] sm:pl-2 sm:pr-2 sm:text-xs"
                                     style={{ width: totalWidth }}
                                 >
-                                    Total projetos
+                                    {totalProjectsHeader}
                                 </span>
                             </div>
                             <div className="relative flex-1 min-h-0 overflow-hidden bg-dark-card">
@@ -1856,14 +1879,14 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
                                             style={{ height: rowHeight }}
                                         >
                                             <span
-                                                className="text-dark-text truncate flex-shrink-0 pl-2 pr-2"
+                                                className="text-dark-text truncate flex-shrink-0 pl-1 pr-1.5 sm:pl-2 sm:pr-2"
                                                 title={row.label}
                                                 style={{ width: labelWidth }}
                                             >
                                                 {row.label}
                                             </span>
                                             <span
-                                                className="text-right text-dark-text-secondary flex-shrink-0 pl-2 pr-2"
+                                                className="text-right text-dark-text-secondary flex-shrink-0 pl-1 pr-1.5 sm:pl-2 sm:pr-2"
                                                 title={`${row.projectCount} projetos`}
                                                 style={{ width: totalWidth }}
                                             >
@@ -1894,7 +1917,7 @@ const HeatmapChart = ({ filters, loadingFilters, initialData = null }) => {
 
                     <div
                         ref={scrollRef}
-                        className={`relative z-0 flex-1 min-h-0 min-w-0 h-full overflow-auto custom-scrollbar ${canDragGrid ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                        className={`relative z-0 flex-1 min-h-0 min-w-0 h-full overflow-auto custom-scrollbar ${canDragGrid ? (isDragEngaged ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
                         style={{
                             scrollbarGutter: 'stable both-edges',
                             overscrollBehavior: 'contain',
