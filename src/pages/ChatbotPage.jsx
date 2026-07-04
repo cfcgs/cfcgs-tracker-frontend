@@ -5,6 +5,30 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import { askChatbot } from '../services/api';
 
 const DEFAULT_PAGE_SIZE = 10;
+const HUMANIZED_COLUMN_LABELS = {
+    year: 'Ano',
+    project_title: 'Projeto',
+    beneficiary_country_name: 'País beneficiário',
+    funding_provider_name: 'Provedor financeiro',
+    source_name: 'Fonte',
+    source_url: 'URL da fonte',
+    financial_instrument_name: 'Instrumento financeiro',
+    sector_name: 'Setor',
+    sub_sector_name: 'Subsetor',
+    approved_amount_usd_millions: 'Valor aprovado (USD mi)',
+    climate_finance_amount_usd_millions: 'Financiamento climático (USD mi)',
+    adaptation_amount_usd_millions: 'Adaptação (USD mi)',
+    mitigation_amount_usd_millions: 'Mitigação (USD mi)',
+    both_objectives_amount_usd_millions: 'Ambos os objetivos (USD mi)',
+    total_amount_usd_millions: 'Valor total (USD mi)',
+    pledge: 'Pledge',
+    deposit: 'Deposit',
+    approval: 'Approval',
+    disbursement: 'Disbursement',
+    projects_approved: 'Projetos aprovados',
+    fund_type_name: 'Tipo de fundo',
+    fund_focus_name: 'Foco do fundo',
+};
 
 const MARKDOWN_PATTERN = /(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g;
 
@@ -94,6 +118,15 @@ const renderMarkdown = (text) => {
             {lineIndex < lines.length - 1 && <br />}
         </React.Fragment>
     ));
+};
+
+const humanizeColumnLabel = (column) => {
+    if (HUMANIZED_COLUMN_LABELS[column]) {
+        return HUMANIZED_COLUMN_LABELS[column];
+    }
+    return String(column)
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
 const INITIAL_BOT_MESSAGE = {
@@ -197,7 +230,7 @@ const ChatbotPage = () => {
                     <thead className="uppercase tracking-wide text-gray-400 bg-gray-800/60">
                         <tr>
                             {columns.map((col) => (
-                                <th key={col} className="px-3 py-2 whitespace-nowrap">{col}</th>
+                                <th key={col} className="px-3 py-2 whitespace-nowrap">{humanizeColumnLabel(col)}</th>
                             ))}
                         </tr>
                     </thead>
